@@ -21,8 +21,17 @@ public static class Program
 		var repoRoot = Directory.GetCurrentDirectory();
 
 		if (command is "validate" or "lint" or "generate-all")
+		if (command is "validate" or "lint" or "generate-all" or "release-check")
 		{
-			repoRoot = args.Length > 1 ? Path.GetFullPath(args[1]) : repoRoot;
+			if (command == "release-check")
+			{
+				var rootArg = args.Skip(1).FirstOrDefault(a => !a.StartsWith("--", StringComparison.Ordinal));
+				repoRoot = string.IsNullOrWhiteSpace(rootArg) ? repoRoot : Path.GetFullPath(rootArg);
+			}
+			else
+			{
+				repoRoot = args.Length > 1 ? Path.GetFullPath(args[1]) : repoRoot;
+			}
 		}
 
 		return command switch
@@ -30,10 +39,60 @@ public static class Program
 			"validate" => RunValidate(repoRoot),
 			"lint" => RunLint(repoRoot),
 			"generate-all" => RunGenerateAll(repoRoot),
+			"release-check" => RunReleaseCheck(args, repoRoot),
 			"import" => RunImport(args, repoRoot),
 			"import-sqlserver" => RunImportSqlServer(args, repoRoot),
 			_ => RunUnknownCommand(command)
 		};
+	}
+
+	private static int RunReleaseCheck(string[] args, string repoRoot)
+	{
+		var failOnWarn = true;
+		for (var i = 1; i < args.Length; i++)
+		{
+			if (args[i].Equals("--fail-on-warn", StringComparison.OrdinalIgnoreCase))
+			{
+				continue;
+			}
+
+			if (args[i].Equals("--fail-on-error", StringComparison.OrdinalIgnoreCase))
+			{
+				failOnWarn = false;
+				continue;
+			}
+		}
+
+		var loadResult = CatalogLoader.Load(repoRoot);
+		PrintLines(loadResult.Diagnostics);
+
+		var tableValidationErrors = CatalogValidator.Validate(loadResult.Tables).ToList();
+		PrintLines(tableValidationErrors);
+
+		var graph = CatalogGraphLoader.Load(repoRoot);
+		PrintLines(graph.Diagnostics);
+		var graphValidationErrors = CatalogGraphValidator.Validate(graph).ToList();
+		PrintLines(graphValidationErrors);
+
+		var policyLoad = GovernancePolicyLoader.Load(repoRoot);
+		PrintLines(policyLoad.Diagnostics);
+
+		var tableFindings = GovernanceEngine.LintFindings(loadResult.Tables, policyLoad.Policy).ToList();
+		var graphFindings = GovernanceEngine.LintGraphFindings(graph).ToList();
+		PrintLines(tableFindings.Select(f => f.ToString()));
+		PrintLines(graphFindings.Select(f => f.ToString()));
+
+		var allValidationErrors = loadResult.Diagnostics
+			.Concat(tableValidationErrors)
+			.Concat(graph.Diagnostics)
+			.Concat(graphValidationErrors)
+			.Concat(policyLoad.Diagnostics)
+			.ToList();
+
+		var result = ReleaseGovernance.Evaluate(allValidationErrors, tableFindings, graphFindings, failOnWarn);
+		PrintLines(result.Messages);
+
+		return result.IsReady ? 0 : 1;
 	}
 
 	private static int RunImport(string[] args, string repoRoot)
@@ -307,7 +366,8 @@ public static class Program
 	private static void PrintHelp()
 	{
 		Console.WriteLine("GitCatalog CLI");
-		Console.WriteLine("Usage: gitcatalog <validate|lint|generate-all|import|import-sqlserver> [args]");
+		Console.WriteLine("Usage: gitcatalog <validate|lint|generate-all|release-check|import|import-sqlserver> [args]");
+		Console.WriteLine("release-check args: [repoRoot] [--fail-on-warn|--fail-on-error]");
 		Console.WriteLine("import args: --source <sqlserver|postgres> [--dry-run] [--timeout-seconds <n>] (<connectionString> | --connection-env <name> | --connection-file <path>) [repoRoot]");
 		Console.WriteLine("import-sqlserver args: [--dry-run] [--timeout-seconds <n>] (<connectionString> | --connection-env <name> | --connection-file <path>) [repoRoot]");
 	}

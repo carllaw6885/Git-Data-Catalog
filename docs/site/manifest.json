@@ -4,5 +4,70 @@
   "tables": [
     "sales.customer",
     "sales.order"
+  ],
+  "viewpointIds": [
+    "c4-component",
+    "c4-container",
+    "c4-context",
+    "critical-assets",
+    "sales-lineage",
+    "system-landscape"
+  ],
+  "lineagePaths": [
+    "../generated/lineage/sales-lineage.mmd"
+  ],
+  "domainDepsPath": "../generated/domain/domain-dependencies.mmd",
+  "c4ContextPath": "../generated/c4/context.mmd",
+  "c4ContainerPath": "../generated/c4/container.mmd",
+  "c4ComponentPath": "../generated/c4/component.mmd",
+  "entities": [
+    {
+      "id": "sales-analyst",
+      "name": "Sales Analyst",
+      "type": "Actor",
+      "domain": null
+    },
+    {
+      "id": "gitcatalog.generation",
+      "name": "Diagram Generation Engine",
+      "type": "Component",
+      "domain": null
+    },
+    {
+      "id": "powerbi.sales-dashboard",
+      "name": "Sales Dashboard",
+      "type": "Consumer",
+      "domain": null
+    },
+    {
+      "id": "sales-db",
+      "name": "Sales Database",
+      "type": "Container",
+      "domain": "sales"
+    },
+    {
+      "id": "sales.orders-curated",
+      "name": "Orders Curated",
+      "type": "Dataset",
+      "domain": "sales"
+    },
+    {
+      "id": "sales",
+      "name": "Sales",
+      "type": "Domain",
+      "domain": null
+    },
+    {
+      "id": "salesforce",
+      "name": "Salesforce",
+      "type": "ExternalVendor",
+      "domain": null
+    },
+    {
+      "id": "crm",
+      "name": "Salesforce",
+      "type": "System",
+      "domain": null
+    }
   ]
 }

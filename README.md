@@ -69,6 +69,14 @@ Supported import options:
 - `--connection-file <path>` read connection string from file
 - `--timeout-seconds <n>` fail import if operation exceeds timeout
 
+Multi-source import command (slice 30):
+
+```bash
+dotnet run --project src/GitCatalog.Cli -- import --source sqlserver --connection-env GITCATALOG_SQL_CONN .
+```
+
+Supported sources: `sqlserver`, `postgres` (recognized placeholder for future implementation).
+
 The import command introspects SQL Server metadata and writes YAML table files to `catalog/tables`.
 
 Graph-based architecture generation (slice 17):
@@ -98,6 +106,35 @@ C4 container generation (slice 22):
 C4 component generation (slice 23):
 
 `generate-all` now renders a C4 component diagram to `docs/generated/c4/component.mmd`.
+
+Static site generation (slice 24), browser Mermaid rendering (slice 25), search/filtering (slice 26), and architecture explorer (slice 27):
+
+`generate-all` now emits richer site assets in `docs/site/` with:
+
+- diagram navigation (ER, lineage, domain dependencies, C4)
+- searchable tables and architecture entities
+- entity-type filtering
+- architecture explorer grouped by entity type
+
+Expanded governance rules (slice 28):
+
+Graph governance now additionally checks:
+
+- missing owners for interface/data product entities
+- missing criticality for system/pipeline/data product entities
+- missing interface descriptions
+
+Schema drift merge strategy details (slice 29):
+
+SQL import drift output now includes field-level merge decisions (e.g., where curated descriptions, owner teams, and FK mappings were preserved).
+
+Release governance command (slice 31):
+
+```bash
+dotnet run --project src/GitCatalog.Cli -- release-check . --fail-on-error
+```
+
+`release-check` evaluates validation + governance findings and exits non-zero when configured thresholds are violated.
 
 ## Planning and Status
 

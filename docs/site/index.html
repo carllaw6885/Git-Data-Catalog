@@ -24,14 +24,47 @@
 
   <main class="layout">
     <aside class="sidebar">
-      <label class="label" for="table-search">Find table</label>
-      <input id="table-search" type="search" placeholder="sales.order" />
+      <label class="label" for="table-search">Search</label>
+      <input id="table-search" type="search" placeholder="tables, systems, pipelines…" />
+
+      <label class="label" for="type-filter" style="margin-top:8px">Filter by type</label>
+      <select id="type-filter">
+        <option value="">All types</option>
+        <option value="table">Table</option>
+        <option value="system">System</option>
+        <option value="pipeline">Pipeline</option>
+        <option value="dataset">Dataset</option>
+        <option value="domain">Domain</option>
+        <option value="consumer">Consumer</option>
+        <option value="actor">Actor</option>
+        <option value="component">Component</option>
+        <option value="container">Container</option>
+      </select>
 
       <button id="show-overview" class="nav-btn nav-btn-primary" type="button">Overview</button>
       <button id="show-er" class="nav-btn" type="button">ER Diagram</button>
 
-      <div class="tables-header">Tables</div>
+      <div class="section-header">Lineage &amp; Domain</div>
+      <button id="show-lineage" class="nav-btn" type="button">Data Lineage</button>
+      <button id="show-domain-deps" class="nav-btn" type="button">Domain Dependencies</button>
+
+      <div class="section-header">C4 Architecture</div>
+      <button id="show-c4-context" class="nav-btn" type="button">C4 Context</button>
+      <button id="show-c4-container" class="nav-btn" type="button">C4 Container</button>
+      <button id="show-c4-component" class="nav-btn" type="button">C4 Component</button>
+
+      <div id="viewpoints-section" style="display:none">
+        <div class="section-header">Viewpoints</div>
+        <nav id="viewpoints-nav" class="tables-nav"></nav>
+      </div>
+
+      <div class="section-header">Tables</div>
       <nav id="tables-nav" class="tables-nav"></nav>
+
+      <div id="entities-section" style="display:none">
+        <div class="section-header">Entities</div>
+        <nav id="entities-nav" class="tables-nav"></nav>
+      </div>
     </aside>
 
     <section class="content-wrap">

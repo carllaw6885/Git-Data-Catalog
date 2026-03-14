@@ -18,11 +18,19 @@ Slice 20 – C4 metadata model
 Slice 21 – Context diagram generator
 Slice 22 – Container diagram generator
 Slice 23 – Component diagram generator
+Slice 24 – Static site generation
+Slice 25 – Mermaid rendering in browser
+Slice 26 – Search and filtering
+Slice 27 – Architecture explorer
+Slice 28 – Expanded governance rules
+Slice 29 – Schema drift merge strategy
+Slice 30 – Multi-source import
+Slice 31 – Release governance
 
 ## In Progress
-Slice 24 – Static site generation
+None
 
 ## Planned
-Slices 25–31
+None
 
 Refer to AI_IMPLEMENTATION_PLAYBOOK.md for detailed sequence.
