@@ -1046,6 +1046,41 @@ public class CatalogTests
     }
 
     [Fact]
+    public void C4Generator_GenerateComponent_Produces_Component_Diagram()
+    {
+        var graph = new CatalogGraph(
+            [
+                new CatalogEntity { Id = "cont.cli", Type = CatalogEntityType.Container, Name = "CLI Container" },
+                new CatalogEntity { Id = "comp.loader", Type = CatalogEntityType.Component, Name = "Loader", Container = "cont.cli" },
+                new CatalogEntity { Id = "comp.generator", Type = CatalogEntityType.Component, Name = "Generator", Container = "cont.cli" },
+                new CatalogEntity { Id = "ds.curated", Type = CatalogEntityType.Dataset, Name = "Curated" }
+            ],
+            [
+                new CatalogRelationship { Id = "rel1", Type = CatalogRelationshipType.Contains, From = "cont.cli", To = "comp.loader" },
+                new CatalogRelationship { Id = "rel2", Type = CatalogRelationshipType.Uses, From = "comp.loader", To = "comp.generator" },
+                new CatalogRelationship { Id = "rel3", Type = CatalogRelationshipType.PublishesTo, From = "comp.generator", To = "ds.curated" }
+            ],
+            [
+                new CatalogViewpoint
+                {
+                    Id = "c4-component",
+                    Name = "C4 Component",
+                    Layout = "TB"
+                }
+            ],
+            []);
+
+        var diagram = C4Generator.GenerateComponent(graph);
+
+        Assert.Equal("c4/component.mmd", diagram.RelativePath);
+        Assert.Contains("flowchart TB", diagram.Content);
+        Assert.Contains("contains", diagram.Content);
+        Assert.Contains("uses", diagram.Content);
+        Assert.DoesNotContain("publishes_to", diagram.Content);
+        Assert.DoesNotContain("Curated", diagram.Content);
+    }
+
+    [Fact]
     public void GraphGovernance_Flags_Missing_Dataset_Classification()
     {
         var graph = new CatalogGraph(

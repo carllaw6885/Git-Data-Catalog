@@ -11,6 +11,9 @@ public static class C4Generator
     public static GeneratedAsset GenerateContainer(CatalogGraph graph)
         => Generate(graph, C4Level.Container, "c4-container", "c4/container.mmd", "LR", "K");
 
+    public static GeneratedAsset GenerateComponent(CatalogGraph graph)
+        => Generate(graph, C4Level.Component, "c4-component", "c4/component.mmd", "TB", "P");
+
     private static GeneratedAsset Generate(
         CatalogGraph graph,
         C4Level level,

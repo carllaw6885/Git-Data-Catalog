@@ -95,6 +95,10 @@ C4 container generation (slice 22):
 
 `generate-all` now renders a C4 container diagram to `docs/generated/c4/container.mmd`.
 
+C4 component generation (slice 23):
+
+`generate-all` now renders a C4 component diagram to `docs/generated/c4/component.mmd`.
+
 ## Planning and Status
 
 - Vertical slice plan and checklist: docs/AI_IMPLEMENTATION_PLAYBOOK.md
