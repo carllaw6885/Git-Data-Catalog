@@ -66,9 +66,16 @@ public static class GovernanceEngine
 
     public static IEnumerable<GovernanceFinding> LintGraphFindings(CatalogGraph graph)
     {
+        static bool RequiresOwner(CatalogEntityType type)
+            => type is CatalogEntityType.System
+                or CatalogEntityType.Pipeline
+                or CatalogEntityType.Dataset
+                or CatalogEntityType.Interface
+                or CatalogEntityType.DataProduct;
+
         foreach (var entity in graph.Entities)
         {
-            if ((entity.Type is CatalogEntityType.System or CatalogEntityType.Pipeline or CatalogEntityType.Dataset)
+            if (RequiresOwner(entity.Type)
                 && string.IsNullOrWhiteSpace(entity.Owner.Team))
             {
                 yield return new GovernanceFinding(
@@ -91,6 +98,23 @@ public static class GovernanceEngine
                     GovernanceSeverity.Warn,
                     "graph-missing-boundary",
                     $"Graph external vendor '{entity.Id}' is missing boundary metadata.");
+            }
+
+            if ((entity.Type is CatalogEntityType.System or CatalogEntityType.Pipeline or CatalogEntityType.DataProduct)
+                && string.IsNullOrWhiteSpace(entity.Criticality))
+            {
+                yield return new GovernanceFinding(
+                    GovernanceSeverity.Warn,
+                    "graph-missing-criticality",
+                    $"Graph entity '{entity.Id}' ({entity.Type}) is missing criticality metadata.");
+            }
+
+            if (entity.Type == CatalogEntityType.Interface && string.IsNullOrWhiteSpace(entity.Description))
+            {
+                yield return new GovernanceFinding(
+                    GovernanceSeverity.Warn,
+                    "graph-undocumented-interface",
+                    $"Graph interface '{entity.Id}' is missing a description.");
             }
         }
 

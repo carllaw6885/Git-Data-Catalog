@@ -1151,6 +1151,39 @@ public class CatalogTests
         Assert.Contains(warnings, w => w.Contains("missing data classification", StringComparison.OrdinalIgnoreCase));
     }
 
+    [Fact]
+    public void GraphGovernance_Flags_Interface_Rule_And_Missing_Criticality()
+    {
+        var graph = new CatalogGraph(
+            [
+                new CatalogEntity
+                {
+                    Id = "iface.orders",
+                    Type = CatalogEntityType.Interface,
+                    Name = "Orders API",
+                    Owner = new OwnerDefinition { Team = "" },
+                    Description = ""
+                },
+                new CatalogEntity
+                {
+                    Id = "sys.billing",
+                    Type = CatalogEntityType.System,
+                    Name = "Billing",
+                    Owner = new OwnerDefinition { Team = "Finance Platform" },
+                    Criticality = ""
+                }
+            ],
+            [],
+            [],
+            []);
+
+        var warnings = GovernanceEngine.LintGraph(graph).ToList();
+
+        Assert.Contains(warnings, w => w.Contains("missing owner team", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(warnings, w => w.Contains("missing criticality", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(warnings, w => w.Contains("missing a description", StringComparison.OrdinalIgnoreCase));
+    }
+
     private static string CreateTempRepoWithCatalog(string fileName, string yaml)
     {
         var root = Path.Combine(Path.GetTempPath(), "gitcatalog-tests", Guid.NewGuid().ToString("N"));
