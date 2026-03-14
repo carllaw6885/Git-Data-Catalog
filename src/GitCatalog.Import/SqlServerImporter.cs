@@ -77,9 +77,7 @@ public sealed class SqlServerImporter
                         driftDetails.AddRange(DetectTableDrift(existing, imported));
                         merged = MergeWithExisting(imported, existing);
 
-                        var existingCanonical = serializer.Serialize(existing);
-                        var mergedCanonical = serializer.Serialize(merged);
-                        changeKind = string.Equals(existingCanonical, mergedCanonical, StringComparison.Ordinal)
+                        changeKind = AreEquivalent(existing, merged)
                             ? ImportChangeKind.Unchanged
                             : ImportChangeKind.Update;
                     }
@@ -281,6 +279,35 @@ public sealed class SqlServerImporter
         }
 
         return drift;
+    }
+
+    private static bool AreEquivalent(TableDefinition left, TableDefinition right)
+    {
+        if (!string.Equals(left.Id, right.Id, StringComparison.OrdinalIgnoreCase)
+            || !string.Equals(left.Database, right.Database, StringComparison.OrdinalIgnoreCase)
+            || !string.Equals(left.Schema, right.Schema, StringComparison.OrdinalIgnoreCase)
+            || !string.Equals(left.Description, right.Description, StringComparison.Ordinal)
+            || !string.Equals(left.Owner.Team, right.Owner.Team, StringComparison.Ordinal)
+            || left.Columns.Count != right.Columns.Count)
+        {
+            return false;
+        }
+
+        for (var i = 0; i < left.Columns.Count; i++)
+        {
+            var a = left.Columns[i];
+            var b = right.Columns[i];
+            if (!string.Equals(a.Name, b.Name, StringComparison.OrdinalIgnoreCase)
+                || !string.Equals(a.Type, b.Type, StringComparison.OrdinalIgnoreCase)
+                || a.Pk != b.Pk
+                || !string.Equals(a.Fk ?? string.Empty, b.Fk ?? string.Empty, StringComparison.OrdinalIgnoreCase)
+                || !string.Equals(a.Description, b.Description, StringComparison.Ordinal))
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private static async Task<SchemaRows> ReadSchemaAsync(string connectionString, CancellationToken cancellationToken)

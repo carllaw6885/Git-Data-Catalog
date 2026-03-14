@@ -24,7 +24,11 @@ public static class CatalogLoader
             .IgnoreUnmatchedProperties()
             .Build();
 
-        foreach (var file in Directory.GetFiles(catalogPath, "*.yaml", SearchOption.AllDirectories))
+        var files = Directory.GetFiles(catalogPath, "*.yaml", SearchOption.AllDirectories)
+            .OrderBy(f => f, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        foreach (var file in files)
         {
             try
             {

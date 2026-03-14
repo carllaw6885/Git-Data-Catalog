@@ -125,7 +125,7 @@ public static class Program
 		var outputPath = Path.Combine(repoRoot, "docs", "generated");
 		Directory.CreateDirectory(outputPath);
 		var erPath = Path.Combine(outputPath, "er.mmd");
-		File.WriteAllText(erPath, er);
+		WriteIfChanged(erPath, er);
 		Console.WriteLine($"Generated ER diagram: {erPath}");
 
 		var docs = MarkdownGenerator.GenerateCatalogDocs(loadResult.Tables, warnings);
@@ -138,7 +138,7 @@ public static class Program
 				Directory.CreateDirectory(directory);
 			}
 
-			File.WriteAllText(path, doc.Content);
+			WriteIfChanged(path, doc.Content);
 		}
 
 		Console.WriteLine($"Generated Markdown docs: {docs.Count}");
@@ -155,7 +155,7 @@ public static class Program
 				Directory.CreateDirectory(directory);
 			}
 
-			File.WriteAllText(path, asset.Content);
+			WriteIfChanged(path, asset.Content);
 		}
 
 		Console.WriteLine($"Generated site assets: {siteAssets.Count}");
@@ -183,5 +183,19 @@ public static class Program
 		Console.WriteLine("GitCatalog CLI");
 		Console.WriteLine("Usage: gitcatalog <validate|lint|generate-all|import-sqlserver> [args]");
 		Console.WriteLine("import-sqlserver args: [--dry-run] <connectionString> [repoRoot]");
+	}
+
+	private static void WriteIfChanged(string path, string content)
+	{
+		if (File.Exists(path))
+		{
+			var existing = File.ReadAllText(path);
+			if (string.Equals(existing, content, StringComparison.Ordinal))
+			{
+				return;
+			}
+		}
+
+		File.WriteAllText(path, content);
 	}
 }

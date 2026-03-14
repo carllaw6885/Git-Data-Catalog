@@ -1,0 +1,65 @@
+name: Publish Site
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore
+        run: dotnet restore GitCatalog.sln
+
+      - name: Build
+        run: dotnet build GitCatalog.sln --no-restore
+
+      - name: Generate Site Artifacts
+        run: dotnet run --project src/GitCatalog.Cli -- generate-all .
+
+      - name: Prepare Pages Content
+        run: |
+          rm -rf publish-site
+          mkdir -p publish-site/generated
+          cp -R docs/site/. publish-site/
+          cp -R docs/generated/. publish-site/generated/
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages Artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: publish-site
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

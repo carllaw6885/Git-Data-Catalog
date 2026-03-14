@@ -7,11 +7,13 @@ Core catalog engine
 Slice 10 – Configurable governance policy
 Slice 11 – SQL import dry-run and drift detection
 Slice 12 – CI/CD quality gates
+Slice 13 – Publishing workflow
+Slice 14 – Performance hardening
 
 ## In Progress
-Slice 13 – Publishing workflow
+Slice 15 – Security and operational readiness
 
 ## Planned
-Slices 14–31
+Slices 16–31
 
 Refer to AI_IMPLEMENTATION_PLAYBOOK.md for detailed sequence.

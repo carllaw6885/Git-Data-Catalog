@@ -65,3 +65,14 @@ Current CI gates run:
 - governance lint
 - generate-all
 - deterministic output check (fails if tracked files change after generation)
+
+## Publishing Workflow
+
+GitHub Pages workflow: `.github/workflows/publish-site.yml`
+
+Publishing pipeline:
+
+- restore/build
+- generate-all via CLI
+- package `docs/site` and `docs/generated`
+- deploy via GitHub Pages actions

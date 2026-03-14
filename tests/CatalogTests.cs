@@ -39,6 +39,51 @@ public class CatalogTests
         Assert.True(column.Pk);
     }
 
+        [Fact]
+        public void Load_Orders_Tables_Deterministically()
+        {
+                var root = Path.Combine(Path.GetTempPath(), "gitcatalog-tests", Guid.NewGuid().ToString("N"));
+                var tablesPath = Path.Combine(root, "catalog", "tables");
+                Directory.CreateDirectory(tablesPath);
+
+                File.WriteAllText(
+                        Path.Combine(tablesPath, "zeta.table.yaml"),
+                        """
+                        id: sales.zeta
+                        database: sales
+                        schema: dbo
+                        description: Zeta table
+                        owner:
+                          team: Team A
+                        columns:
+                          - name: Id
+                            type: bigint
+                            pk: true
+                            description: Primary key
+                        """);
+
+                File.WriteAllText(
+                        Path.Combine(tablesPath, "alpha.table.yaml"),
+                        """
+                        id: sales.alpha
+                        database: sales
+                        schema: dbo
+                        description: Alpha table
+                        owner:
+                          team: Team A
+                        columns:
+                          - name: Id
+                            type: bigint
+                            pk: true
+                            description: Primary key
+                        """);
+
+                var result = CatalogLoader.Load(root);
+
+                Assert.Empty(result.Diagnostics);
+                Assert.Equal(["sales.alpha", "sales.zeta"], result.Tables.Select(t => t.Id).ToArray());
+        }
+
     [Fact]
     public void Validate_Flags_Missing_Required_Fields()
     {
