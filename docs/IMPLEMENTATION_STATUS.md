@@ -10,11 +10,12 @@ Slice 12 – CI/CD quality gates
 Slice 13 – Publishing workflow
 Slice 14 – Performance hardening
 Slice 15 – Security and operational readiness
-
-## In Progress
 Slice 16 – Architecture schema pack and validator
 
+## In Progress
+Slice 17 – System architecture diagram generator
+
 ## Planned
-Slices 17–31
+Slices 18–31
 
 Refer to AI_IMPLEMENTATION_PLAYBOOK.md for detailed sequence.

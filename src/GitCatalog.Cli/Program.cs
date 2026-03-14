@@ -90,7 +90,17 @@ public static class Program
 		var errors = CatalogValidator.Validate(loadResult.Tables).ToList();
 		PrintLines(errors);
 
-		return loadResult.Diagnostics.Count == 0 && errors.Count == 0 ? 0 : 1;
+		var graph = CatalogGraphLoader.Load(repoRoot);
+		PrintLines(graph.Diagnostics);
+		var graphErrors = CatalogGraphValidator.Validate(graph).ToList();
+		PrintLines(graphErrors);
+
+		return loadResult.Diagnostics.Count == 0
+			&& errors.Count == 0
+			&& graph.Diagnostics.Count == 0
+			&& graphErrors.Count == 0
+			? 0
+			: 1;
 	}
 
 	private static int RunLint(string repoRoot)
@@ -107,6 +117,11 @@ public static class Program
 
 		var warnings = GovernanceEngine.Lint(loadResult.Tables, policyLoad.Policy).ToList();
 		PrintLines(warnings);
+
+		var graph = CatalogGraphLoader.Load(repoRoot);
+		PrintLines(graph.Diagnostics);
+		var graphWarnings = GovernanceEngine.LintGraph(graph).ToList();
+		PrintLines(graphWarnings);
 		return 0;
 	}
 

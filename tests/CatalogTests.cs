@@ -656,6 +656,152 @@ public class CatalogTests
         Assert.Contains("positive integer", parsed.Error ?? string.Empty, StringComparison.OrdinalIgnoreCase);
     }
 
+    [Fact]
+    public void GraphLoader_Loads_Entities_Relationships_Viewpoints_And_Table_Normalization()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "gitcatalog-tests", Guid.NewGuid().ToString("N"));
+
+        var systemPath = Path.Combine(root, "catalog", "entities", "systems");
+        Directory.CreateDirectory(systemPath);
+        File.WriteAllText(
+            Path.Combine(systemPath, "crm.yaml"),
+            """
+            id: crm
+            type: system
+            name: CRM
+            description: Source system
+            owner:
+              team: Commercial Systems
+            """);
+
+        var relationshipsPath = Path.Combine(root, "catalog", "relationships", "integrations");
+        Directory.CreateDirectory(relationshipsPath);
+        File.WriteAllText(
+            Path.Combine(relationshipsPath, "crm-to-table.yaml"),
+            """
+            id: rel.crm-to-order
+            type: ingests_from
+            from: crm
+            to: sales.order
+            description: CRM feeds orders
+            criticality: high
+            technology:
+              type: adf
+            """);
+
+        var viewpointsPath = Path.Combine(root, "catalog", "viewpoints", "architecture");
+        Directory.CreateDirectory(viewpointsPath);
+        File.WriteAllText(
+            Path.Combine(viewpointsPath, "landscape.yaml"),
+            """
+            id: landscape
+            name: Landscape
+            includeEntityTypes:
+              - system
+              - table
+            includeRelationshipTypes:
+              - ingests_from
+            """);
+
+        var tablesPath = Path.Combine(root, "catalog", "tables");
+        Directory.CreateDirectory(tablesPath);
+        File.WriteAllText(
+            Path.Combine(tablesPath, "sales.order.yaml"),
+            """
+            id: sales.order
+            database: sales
+            schema: dbo
+            description: Order table
+            owner:
+              team: Data
+            columns:
+              - name: OrderId
+                type: bigint
+                pk: true
+                description: Primary key
+            """);
+
+        var graph = CatalogGraphLoader.Load(root);
+
+        Assert.Empty(graph.Diagnostics);
+        Assert.Contains(graph.Entities, e => e.Id == "crm" && e.Type == CatalogEntityType.System);
+        Assert.Contains(graph.Entities, e => e.Id == "sales.order" && e.Type == CatalogEntityType.Table);
+        Assert.Contains(graph.Entities, e => e.Id == "sales.order.OrderId" && e.Type == CatalogEntityType.Column);
+        Assert.Contains(graph.Relationships, r => r.Id == "rel.crm-to-order" && r.Type == CatalogRelationshipType.IngestsFrom);
+        Assert.Contains(graph.Relationships, r => r.Type == CatalogRelationshipType.Contains && r.From == "sales.order");
+        Assert.Contains(graph.Viewpoints, v => v.Id == "landscape");
+    }
+
+    [Fact]
+    public void GraphValidator_Flags_Unknown_Relationship_Endpoints()
+    {
+        var graph = new CatalogGraph(
+            [new CatalogEntity { Id = "crm", Type = CatalogEntityType.System, Name = "CRM" }],
+            [new CatalogRelationship { Id = "rel1", Type = CatalogRelationshipType.DependsOn, From = "crm", To = "missing" }],
+            [],
+            []);
+
+        var issues = CatalogGraphValidator.Validate(graph).ToList();
+
+        Assert.Contains(issues, i => i.Contains("unknown target entity", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public void ViewpointService_Filters_To_Selected_Types_And_Connected_Edges()
+    {
+        var graph = new CatalogGraph(
+            [
+                new CatalogEntity { Id = "crm", Type = CatalogEntityType.System, Name = "CRM" },
+                new CatalogEntity { Id = "sales", Type = CatalogEntityType.Domain, Name = "Sales" },
+                new CatalogEntity { Id = "orders", Type = CatalogEntityType.Table, Name = "Orders" }
+            ],
+            [
+                new CatalogRelationship { Id = "rel1", Type = CatalogRelationshipType.BelongsTo, From = "crm", To = "sales" },
+                new CatalogRelationship { Id = "rel2", Type = CatalogRelationshipType.ReadsFrom, From = "crm", To = "orders" }
+            ],
+            [],
+            []);
+
+        var viewpoint = new CatalogViewpoint
+        {
+            Id = "arch",
+            Name = "Architecture",
+            IncludeEntityTypes = [CatalogEntityType.System, CatalogEntityType.Domain],
+            IncludeRelationshipTypes = [CatalogRelationshipType.BelongsTo, CatalogRelationshipType.ReadsFrom]
+        };
+
+        var filtered = CatalogViewpointService.Filter(graph, viewpoint);
+
+        Assert.Equal(2, filtered.Entities.Count);
+        Assert.Contains(filtered.Entities, e => e.Id == "crm");
+        Assert.Contains(filtered.Entities, e => e.Id == "sales");
+        var rel = Assert.Single(filtered.Relationships);
+        Assert.Equal("rel1", rel.Id);
+    }
+
+    [Fact]
+    public void GraphGovernance_Flags_Missing_Dataset_Classification()
+    {
+        var graph = new CatalogGraph(
+            [
+                new CatalogEntity
+                {
+                    Id = "dataset.orders",
+                    Type = CatalogEntityType.Dataset,
+                    Name = "Orders",
+                    Owner = new OwnerDefinition { Team = "Data Platform" },
+                    Classification = ""
+                }
+            ],
+            [],
+            [],
+            []);
+
+        var warnings = GovernanceEngine.LintGraph(graph).ToList();
+
+        Assert.Contains(warnings, w => w.Contains("missing data classification", StringComparison.OrdinalIgnoreCase));
+    }
+
     private static string CreateTempRepoWithCatalog(string fileName, string yaml)
     {
         var root = Path.Combine(Path.GetTempPath(), "gitcatalog-tests", Guid.NewGuid().ToString("N"));

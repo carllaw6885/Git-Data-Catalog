@@ -61,6 +61,65 @@ public static class GovernanceEngine
         }
     }
 
+    public static IEnumerable<string> LintGraph(CatalogGraph graph)
+        => LintGraphFindings(graph).Select(f => f.ToString());
+
+    public static IEnumerable<GovernanceFinding> LintGraphFindings(CatalogGraph graph)
+    {
+        foreach (var entity in graph.Entities)
+        {
+            if ((entity.Type is CatalogEntityType.System or CatalogEntityType.Pipeline or CatalogEntityType.Dataset)
+                && string.IsNullOrWhiteSpace(entity.Owner.Team))
+            {
+                yield return new GovernanceFinding(
+                    GovernanceSeverity.Warn,
+                    "graph-missing-owner",
+                    $"Graph entity '{entity.Id}' ({entity.Type}) is missing owner team.");
+            }
+
+            if (entity.Type == CatalogEntityType.Dataset && string.IsNullOrWhiteSpace(entity.Classification))
+            {
+                yield return new GovernanceFinding(
+                    GovernanceSeverity.Warn,
+                    "graph-missing-classification",
+                    $"Graph dataset '{entity.Id}' is missing data classification.");
+            }
+
+            if (entity.Type == CatalogEntityType.ExternalVendor && string.IsNullOrWhiteSpace(entity.Boundary))
+            {
+                yield return new GovernanceFinding(
+                    GovernanceSeverity.Warn,
+                    "graph-missing-boundary",
+                    $"Graph external vendor '{entity.Id}' is missing boundary metadata.");
+            }
+        }
+
+        var entityById = graph.Entities.ToDictionary(e => e.Id, StringComparer.OrdinalIgnoreCase);
+        foreach (var rel in graph.Relationships)
+        {
+            if (string.Equals(rel.Criticality, "high", StringComparison.OrdinalIgnoreCase)
+                && string.IsNullOrWhiteSpace(rel.Technology))
+            {
+                yield return new GovernanceFinding(
+                    GovernanceSeverity.Warn,
+                    "graph-critical-rel-missing-tech",
+                    $"Critical relationship '{rel.Id}' is missing technology metadata.");
+            }
+
+            var touchesConsumer =
+                (entityById.TryGetValue(rel.From, out var source) && source.Type == CatalogEntityType.Consumer)
+                || (entityById.TryGetValue(rel.To, out var target) && target.Type == CatalogEntityType.Consumer);
+
+            if (touchesConsumer && string.IsNullOrWhiteSpace(rel.Description))
+            {
+                yield return new GovernanceFinding(
+                    GovernanceSeverity.Warn,
+                    "graph-consumer-rel-missing-description",
+                    $"Consumer-facing relationship '{rel.Id}' is missing description.");
+            }
+        }
+    }
+
     private static GovernanceFinding Finding(GovernanceRulePolicy rule, string code, string message)
         => new(ParseSeverity(rule.Severity), code, message);
 
