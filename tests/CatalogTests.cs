@@ -1007,6 +1007,45 @@ public class CatalogTests
     }
 
     [Fact]
+    public void C4Generator_GenerateContainer_Produces_Container_Diagram()
+    {
+        var graph = new CatalogGraph(
+            [
+                new CatalogEntity { Id = "sys.crm", Type = CatalogEntityType.System, Name = "CRM" },
+                new CatalogEntity { Id = "cont.api", Type = CatalogEntityType.Container, Name = "API" },
+                new CatalogEntity { Id = "db.sales", Type = CatalogEntityType.Database, Name = "Sales DB" },
+                new CatalogEntity { Id = "pipe.etl", Type = CatalogEntityType.Pipeline, Name = "ETL" },
+                new CatalogEntity { Id = "ds.curated", Type = CatalogEntityType.Dataset, Name = "Curated" },
+                new CatalogEntity { Id = "comp.loader", Type = CatalogEntityType.Component, Name = "Loader" }
+            ],
+            [
+                new CatalogRelationship { Id = "rel1", Type = CatalogRelationshipType.DependsOn, From = "sys.crm", To = "cont.api" },
+                new CatalogRelationship { Id = "rel2", Type = CatalogRelationshipType.ReadsFrom, From = "pipe.etl", To = "db.sales" },
+                new CatalogRelationship { Id = "rel3", Type = CatalogRelationshipType.PublishesTo, From = "pipe.etl", To = "ds.curated" },
+                new CatalogRelationship { Id = "rel4", Type = CatalogRelationshipType.Contains, From = "cont.api", To = "comp.loader" }
+            ],
+            [
+                new CatalogViewpoint
+                {
+                    Id = "c4-container",
+                    Name = "C4 Container",
+                    Layout = "TB"
+                }
+            ],
+            []);
+
+        var diagram = C4Generator.GenerateContainer(graph);
+
+        Assert.Equal("c4/container.mmd", diagram.RelativePath);
+        Assert.Contains("flowchart TB", diagram.Content);
+        Assert.Contains("depends_on", diagram.Content);
+        Assert.Contains("reads_from", diagram.Content);
+        Assert.Contains("publishes_to", diagram.Content);
+        Assert.DoesNotContain("contains", diagram.Content);
+        Assert.DoesNotContain("Loader", diagram.Content);
+    }
+
+    [Fact]
     public void GraphGovernance_Flags_Missing_Dataset_Classification()
     {
         var graph = new CatalogGraph(

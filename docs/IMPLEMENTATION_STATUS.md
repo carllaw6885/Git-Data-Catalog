@@ -16,11 +16,12 @@ Slice 18 – Data lineage generator
 Slice 19 – Domain dependency diagrams
 Slice 20 – C4 metadata model
 Slice 21 – Context diagram generator
-
-## In Progress
 Slice 22 – Container diagram generator
 
+## In Progress
+Slice 23 – Component diagram generator
+
 ## Planned
-Slices 23–31
+Slices 24–31
 
 Refer to AI_IMPLEMENTATION_PLAYBOOK.md for detailed sequence.

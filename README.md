@@ -91,6 +91,10 @@ C4 context generation (slice 21):
 
 `generate-all` now renders a C4 context diagram to `docs/generated/c4/context.mmd`.
 
+C4 container generation (slice 22):
+
+`generate-all` now renders a C4 container diagram to `docs/generated/c4/container.mmd`.
+
 ## Planning and Status
 
 - Vertical slice plan and checklist: docs/AI_IMPLEMENTATION_PLAYBOOK.md

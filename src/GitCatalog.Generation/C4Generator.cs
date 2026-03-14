@@ -6,9 +6,21 @@ namespace GitCatalog.Generation;
 public static class C4Generator
 {
     public static GeneratedAsset GenerateContext(CatalogGraph graph)
+        => Generate(graph, C4Level.Context, "c4-context", "c4/context.mmd", "LR", "C");
+
+    public static GeneratedAsset GenerateContainer(CatalogGraph graph)
+        => Generate(graph, C4Level.Container, "c4-container", "c4/container.mmd", "LR", "K");
+
+    private static GeneratedAsset Generate(
+        CatalogGraph graph,
+        C4Level level,
+        string viewpointId,
+        string relativePath,
+        string fallbackLayout,
+        string nodePrefix)
     {
-        var model = C4ModelBuilder.Build(graph, C4Level.Context);
-        var layout = ResolveLayout(graph, "c4-context", "LR");
+        var model = C4ModelBuilder.Build(graph, level);
+        var layout = ResolveLayout(graph, viewpointId, fallbackLayout);
 
         var sb = new StringBuilder();
         sb.AppendLine($"flowchart {layout}");
@@ -18,7 +30,7 @@ public static class C4Generator
 
         foreach (var node in model.Nodes.OrderBy(n => n.Id, StringComparer.OrdinalIgnoreCase))
         {
-            var nodeId = $"C{index++}";
+            var nodeId = $"{nodePrefix}{index++}";
             nodeIds[node.Id] = nodeId;
 
             var label = string.IsNullOrWhiteSpace(node.Label) ? node.Id : node.Label;
@@ -36,7 +48,7 @@ public static class C4Generator
             sb.AppendLine($"  {from} -->|{label}| {to}");
         }
 
-        return new GeneratedAsset("c4/context.mmd", sb.ToString());
+        return new GeneratedAsset(relativePath, sb.ToString());
     }
 
     private static string ResolveLayout(CatalogGraph graph, string viewpointId, string fallback)

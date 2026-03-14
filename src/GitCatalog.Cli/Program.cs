@@ -221,6 +221,17 @@ public static class Program
 		WriteIfChanged(c4ContextPath, c4Context.Content);
 		Console.WriteLine("Generated C4 context diagrams: 1");
 
+		var c4Container = C4Generator.GenerateContainer(graph);
+		var c4ContainerPath = Path.Combine(outputPath, c4Container.RelativePath);
+		var c4ContainerDirectory = Path.GetDirectoryName(c4ContainerPath);
+		if (!string.IsNullOrWhiteSpace(c4ContainerDirectory))
+		{
+			Directory.CreateDirectory(c4ContainerDirectory);
+		}
+
+		WriteIfChanged(c4ContainerPath, c4Container.Content);
+		Console.WriteLine("Generated C4 container diagrams: 1");
+
 		var siteOutputPath = Path.Combine(repoRoot, "docs", "site");
 		Directory.CreateDirectory(siteOutputPath);
 		var siteAssets = StaticSiteGenerator.GenerateSiteAssets(loadResult.Tables);
