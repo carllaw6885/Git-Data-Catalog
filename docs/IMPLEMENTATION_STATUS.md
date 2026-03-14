@@ -12,11 +12,12 @@ Slice 14 – Performance hardening
 Slice 15 – Security and operational readiness
 Slice 16 – Architecture schema pack and validator
 Slice 17 – System architecture diagram generator
-
-## In Progress
 Slice 18 – Data lineage generator
 
+## In Progress
+Slice 19 – Domain dependency diagrams
+
 ## Planned
-Slices 19–31
+Slices 20–31
 
 Refer to AI_IMPLEMENTATION_PLAYBOOK.md for detailed sequence.

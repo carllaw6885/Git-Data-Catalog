@@ -184,6 +184,21 @@ public static class Program
 
 		Console.WriteLine($"Generated graph viewpoints: {generatedViews}");
 
+		var lineageAssets = LineageGenerator.Generate(graph);
+		foreach (var asset in lineageAssets)
+		{
+			var path = Path.Combine(outputPath, asset.RelativePath);
+			var directory = Path.GetDirectoryName(path);
+			if (!string.IsNullOrWhiteSpace(directory))
+			{
+				Directory.CreateDirectory(directory);
+			}
+
+			WriteIfChanged(path, asset.Content);
+		}
+
+		Console.WriteLine($"Generated lineage diagrams: {lineageAssets.Count}");
+
 		var siteOutputPath = Path.Combine(repoRoot, "docs", "site");
 		Directory.CreateDirectory(siteOutputPath);
 		var siteAssets = StaticSiteGenerator.GenerateSiteAssets(loadResult.Tables);

@@ -307,6 +307,40 @@ public class CatalogTests
     }
 
     [Fact]
+    public void LineageGenerator_Uses_Lineage_Viewpoints_From_Graph()
+    {
+        var graph = new CatalogGraph(
+            [
+                new CatalogEntity { Id = "crm", Type = CatalogEntityType.System, Name = "CRM" },
+                new CatalogEntity { Id = "sales.order", Type = CatalogEntityType.Table, Name = "Order" },
+                new CatalogEntity { Id = "sales.curated", Type = CatalogEntityType.Dataset, Name = "Curated" }
+            ],
+            [
+                new CatalogRelationship { Id = "rel1", Type = CatalogRelationshipType.IngestsFrom, From = "crm", To = "sales.order" },
+                new CatalogRelationship { Id = "rel2", Type = CatalogRelationshipType.Feeds, From = "sales.order", To = "sales.curated" }
+            ],
+            [
+                new CatalogViewpoint
+                {
+                    Id = "sales-lineage",
+                    Name = "Sales Lineage",
+                    Layout = "LR",
+                    IncludeEntityTypes = [CatalogEntityType.System, CatalogEntityType.Table, CatalogEntityType.Dataset],
+                    IncludeRelationshipTypes = [CatalogRelationshipType.IngestsFrom, CatalogRelationshipType.Feeds]
+                }
+            ],
+            []);
+
+        var assets = LineageGenerator.Generate(graph);
+
+        var lineage = Assert.Single(assets);
+        Assert.Equal("lineage/sales-lineage.mmd", lineage.RelativePath);
+        Assert.Contains("flowchart LR", lineage.Content);
+        Assert.Contains("ingests_from", lineage.Content);
+        Assert.Contains("feeds", lineage.Content);
+    }
+
+    [Fact]
     public void GenerateCatalogDocs_Emits_Index_And_Table_Page()
     {
         var docs = MarkdownGenerator.GenerateCatalogDocs(
