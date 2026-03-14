@@ -1,0 +1,6 @@
+id: rel.sales-order-to-curated
+type: feeds
+from: sales.order
+to: sales.orders-curated
+description: Operational orders feed the curated analytics dataset
+direction: unidirectional

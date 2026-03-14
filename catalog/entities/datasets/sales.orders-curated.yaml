@@ -1,0 +1,12 @@
+id: sales.orders-curated
+type: dataset
+name: Orders Curated
+description: Analytics-ready curated orders dataset
+domain: sales
+owner:
+  team: Data Platform
+classification: internal
+tags:
+  - analytics
+  - curated
+status: active

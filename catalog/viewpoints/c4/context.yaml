@@ -1,0 +1,14 @@
+id: c4-context
+name: C4 Context
+description: Context view for actors, systems and external vendors
+includeEntityTypes:
+  - actor
+  - system
+  - external_vendor
+  - consumer
+includeRelationshipTypes:
+  - uses
+  - syncs_to
+  - publishes_to
+  - depends_on
+layout: LR

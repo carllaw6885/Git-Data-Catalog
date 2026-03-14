@@ -1,0 +1,13 @@
+id: sales-lineage
+name: Sales Lineage
+description: Lineage view from CRM through operational and curated sales outputs
+includeEntityTypes:
+  - system
+  - table
+  - dataset
+  - consumer
+includeRelationshipTypes:
+  - ingests_from
+  - feeds
+  - publishes_to
+layout: LR

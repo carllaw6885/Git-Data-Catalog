@@ -1,0 +1,8 @@
+id: sales-analyst
+type: actor
+name: Sales Analyst
+description: Business analyst consuming curated reporting
+boundary: internal
+owner:
+  team: Sales Operations
+status: active

@@ -1,0 +1,11 @@
+id: sales-db
+type: container
+name: Sales Database
+description: Operational SQL database for sales platform
+domain: sales
+technology:
+  type: sql-server
+owner:
+  team: Data Platform
+status: active
+criticality: high

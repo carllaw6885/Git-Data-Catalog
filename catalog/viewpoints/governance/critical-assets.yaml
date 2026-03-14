@@ -1,0 +1,13 @@
+id: critical-assets
+name: Critical Assets
+description: Governance view of critical architecture entities and relationships
+filters:
+  criticality: high
+includeEntityTypes:
+  - system
+  - container
+  - dataset
+includeRelationshipTypes:
+  - depends_on
+  - ingests_from
+layout: TB

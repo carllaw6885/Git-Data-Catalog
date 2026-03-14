@@ -17,7 +17,12 @@ public static class Program
 		}
 
 		var command = args[0].Trim().ToLowerInvariant();
-		var repoRoot = args.Length > 1 ? Path.GetFullPath(args[1]) : Directory.GetCurrentDirectory();
+		var repoRoot = Directory.GetCurrentDirectory();
+
+		if (command is "validate" or "lint" or "generate-all")
+		{
+			repoRoot = args.Length > 1 ? Path.GetFullPath(args[1]) : repoRoot;
+		}
 
 		return command switch
 		{
@@ -31,21 +36,36 @@ public static class Program
 
 	private static int RunImportSqlServer(string[] args, string repoRoot)
 	{
-		if (args.Length < 2)
+		var options = args.Skip(1).Where(a => a.StartsWith("--", StringComparison.Ordinal)).ToList();
+		var positional = args.Skip(1).Where(a => !a.StartsWith("--", StringComparison.Ordinal)).ToList();
+		var dryRun = options.Contains("--dry-run", StringComparer.OrdinalIgnoreCase);
+
+		if (positional.Count < 1)
 		{
 			Console.Error.WriteLine("Missing SQL Server connection string.");
-			Console.Error.WriteLine("Usage: gitcatalog import-sqlserver <connectionString> [repoRoot]");
+			Console.Error.WriteLine("Usage: gitcatalog import-sqlserver [--dry-run] <connectionString> [repoRoot]");
 			return 1;
 		}
+
+		repoRoot = positional.Count > 1 ? Path.GetFullPath(positional[1]) : repoRoot;
 
 		try
 		{
 			var importer = new SqlServerImporter();
-			var result = importer.ImportAsync(args[1], repoRoot).GetAwaiter().GetResult();
+			var result = importer.ImportAsync(positional[0], repoRoot, new ImportOptions(dryRun)).GetAwaiter().GetResult();
 			PrintLines(result.Warnings);
+			foreach (var change in result.Changes)
+			{
+				Console.WriteLine($"{change.Kind}: {change.Summary}");
+				foreach (var detail in change.DriftDetails)
+				{
+					Console.WriteLine($"  - {detail}");
+				}
+			}
 			Console.WriteLine($"Imported tables: {result.Tables.Count}");
 			Console.WriteLine($"Wrote YAML files: {result.FilesWritten.Count}");
 			Console.WriteLine($"Import warnings: {result.Warnings.Count}");
+			Console.WriteLine($"Import dry-run: {result.IsDryRun}");
 			return 0;
 		}
 		catch (Exception ex)
@@ -75,7 +95,10 @@ public static class Program
 			return 1;
 		}
 
-		var warnings = GovernanceEngine.Lint(loadResult.Tables).ToList();
+		var policyLoad = GovernancePolicyLoader.Load(repoRoot);
+		PrintLines(policyLoad.Diagnostics);
+
+		var warnings = GovernanceEngine.Lint(loadResult.Tables, policyLoad.Policy).ToList();
 		PrintLines(warnings);
 		return 0;
 	}
@@ -92,7 +115,10 @@ public static class Program
 			return 1;
 		}
 
-		var warnings = GovernanceEngine.Lint(loadResult.Tables).ToList();
+		var policyLoad = GovernancePolicyLoader.Load(repoRoot);
+		PrintLines(policyLoad.Diagnostics);
+
+		var warnings = GovernanceEngine.Lint(loadResult.Tables, policyLoad.Policy).ToList();
 		PrintLines(warnings);
 
 		var er = MermaidGenerator.GenerateEr(loadResult.Tables);
@@ -156,6 +182,6 @@ public static class Program
 	{
 		Console.WriteLine("GitCatalog CLI");
 		Console.WriteLine("Usage: gitcatalog <validate|lint|generate-all|import-sqlserver> [args]");
-		Console.WriteLine("import-sqlserver args: <connectionString> [repoRoot]");
+		Console.WriteLine("import-sqlserver args: [--dry-run] <connectionString> [repoRoot]");
 	}
 }

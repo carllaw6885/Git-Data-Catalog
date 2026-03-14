@@ -1,0 +1,6 @@
+id: rel.crm-belongs-to-sales-domain
+type: belongs_to
+from: crm
+to: sales
+description: CRM capability belongs to the Sales domain
+direction: unidirectional

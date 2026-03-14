@@ -1,0 +1,6 @@
+id: salesforce
+type: external_vendor
+name: Salesforce
+description: Vendor providing CRM SaaS capabilities
+boundary: external
+status: active

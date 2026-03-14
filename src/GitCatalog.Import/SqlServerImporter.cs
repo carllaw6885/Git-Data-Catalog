@@ -7,13 +7,40 @@ namespace GitCatalog.Import;
 
 public sealed class SqlServerImporter
 {
-    public async Task<ImportResult> ImportAsync(string connectionString, string repoRoot, CancellationToken cancellationToken = default)
+    public async Task<ImportResult> ImportAsync(
+        string connectionString,
+        string repoRoot,
+        ImportOptions? options = null,
+        CancellationToken cancellationToken = default)
     {
+        options ??= new ImportOptions();
+
         var rows = await ReadSchemaAsync(connectionString, cancellationToken);
         var importedTables = BuildTables(rows.Tables, rows.Columns, rows.ForeignKeys);
+        var plan = BuildImportPlan(importedTables, repoRoot);
 
+        var files = new List<string>();
+        if (!options.DryRun)
+        {
+            foreach (var write in plan.Writes)
+            {
+                var directory = Path.GetDirectoryName(write.FilePath);
+                if (!string.IsNullOrWhiteSpace(directory))
+                {
+                    Directory.CreateDirectory(directory);
+                }
+
+                File.WriteAllText(write.FilePath, write.Content);
+                files.Add(write.FilePath);
+            }
+        }
+
+        return new ImportResult(plan.Tables, files, plan.Warnings, plan.Changes, options.DryRun);
+    }
+
+    public ImportPlan BuildImportPlan(IReadOnlyCollection<TableDefinition> importedTables, string repoRoot)
+    {
         var outputPath = Path.Combine(repoRoot, "catalog", "tables");
-        Directory.CreateDirectory(outputPath);
 
         var deserializer = new DeserializerBuilder()
             .WithNamingConvention(CamelCaseNamingConvention.Instance)
@@ -25,12 +52,19 @@ public sealed class SqlServerImporter
             .Build();
 
         var mergedTables = new List<TableDefinition>();
-        var files = new List<string>();
+        var writes = new List<PlannedCatalogWrite>();
+        var changes = new List<ImportChange>();
         var warnings = new List<string>();
-        foreach (var imported in importedTables)
+        var importedIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var imported in importedTables.OrderBy(t => t.Id, StringComparer.OrdinalIgnoreCase))
         {
+            importedIds.Add(imported.Id);
+
             var path = Path.Combine(outputPath, $"{imported.Id}.yaml");
             var merged = imported;
+            var changeKind = ImportChangeKind.Create;
+            var driftDetails = new List<string>();
 
             if (File.Exists(path))
             {
@@ -40,22 +74,65 @@ public sealed class SqlServerImporter
                     var existing = deserializer.Deserialize<TableDefinition>(existingText);
                     if (existing is not null)
                     {
+                        driftDetails.AddRange(DetectTableDrift(existing, imported));
                         merged = MergeWithExisting(imported, existing);
+
+                        var existingCanonical = serializer.Serialize(existing);
+                        var mergedCanonical = serializer.Serialize(merged);
+                        changeKind = string.Equals(existingCanonical, mergedCanonical, StringComparison.Ordinal)
+                            ? ImportChangeKind.Unchanged
+                            : ImportChangeKind.Update;
+                    }
+                    else
+                    {
+                        changeKind = ImportChangeKind.Update;
+                        driftDetails.Add("Existing table metadata could not be parsed; update planned from source schema.");
                     }
                 }
                 catch (Exception ex)
                 {
                     warnings.Add($"Unable to merge existing metadata for '{imported.Id}' from {path}: {ex.Message}");
+                    changeKind = ImportChangeKind.Update;
+                    driftDetails.Add("Merge fallback activated due to metadata parse error.");
                 }
+            }
+            else
+            {
+                driftDetails.Add("Table does not exist in catalog; file will be created.");
             }
 
             var yaml = serializer.Serialize(merged);
-            File.WriteAllText(path, yaml);
-            files.Add(path);
             mergedTables.Add(merged);
+            changes.Add(new ImportChange(imported.Id, path, changeKind, BuildChangeSummary(changeKind, imported.Id), driftDetails));
+
+            if (changeKind is ImportChangeKind.Create or ImportChangeKind.Update)
+            {
+                writes.Add(new PlannedCatalogWrite(path, yaml, merged));
+            }
         }
 
-        return new ImportResult(mergedTables, files, warnings);
+        if (!Directory.Exists(outputPath))
+        {
+            return new ImportPlan(mergedTables, writes, changes, warnings);
+        }
+
+        foreach (var existingFile in Directory.GetFiles(outputPath, "*.yaml", SearchOption.AllDirectories))
+        {
+            var tableId = Path.GetFileNameWithoutExtension(existingFile);
+            if (importedIds.Contains(tableId))
+            {
+                continue;
+            }
+
+            changes.Add(new ImportChange(
+                tableId,
+                existingFile,
+                ImportChangeKind.Remove,
+                BuildChangeSummary(ImportChangeKind.Remove, tableId),
+                ["Table exists in catalog but is absent from source schema."]));
+        }
+
+        return new ImportPlan(mergedTables, writes, changes, warnings);
     }
 
     public TableDefinition MergeWithExisting(TableDefinition imported, TableDefinition existing)
@@ -78,23 +155,6 @@ public sealed class SqlServerImporter
                 Team = string.IsNullOrWhiteSpace(existing.Owner?.Team) ? imported.Owner.Team : existing.Owner.Team
             },
             Columns = mergedColumns
-        };
-    }
-
-    private static ColumnDefinition MergeColumn(ColumnDefinition imported, ColumnDefinition? existing)
-    {
-        if (existing is null)
-        {
-            return imported;
-        }
-
-        return new ColumnDefinition
-        {
-            Name = imported.Name,
-            Type = imported.Type,
-            Pk = imported.Pk,
-            Fk = string.IsNullOrWhiteSpace(imported.Fk) ? existing.Fk : imported.Fk,
-            Description = string.IsNullOrWhiteSpace(existing.Description) ? imported.Description : existing.Description
         };
     }
 
@@ -140,10 +200,88 @@ public sealed class SqlServerImporter
         return result;
     }
 
+    private static ColumnDefinition MergeColumn(ColumnDefinition imported, ColumnDefinition? existing)
+    {
+        if (existing is null)
+        {
+            return imported;
+        }
+
+        return new ColumnDefinition
+        {
+            Name = imported.Name,
+            Type = imported.Type,
+            Pk = imported.Pk,
+            Fk = string.IsNullOrWhiteSpace(imported.Fk) ? existing.Fk : imported.Fk,
+            Description = string.IsNullOrWhiteSpace(existing.Description) ? imported.Description : existing.Description
+        };
+    }
+
     private static string BuildTableId(string databaseName, string schemaName, string tableName)
         => schemaName.Equals("dbo", StringComparison.OrdinalIgnoreCase)
             ? $"{databaseName}.{tableName}"
             : $"{databaseName}.{schemaName}.{tableName}";
+
+    private static string BuildChangeSummary(ImportChangeKind kind, string tableId)
+        => kind switch
+        {
+            ImportChangeKind.Create => $"Create {tableId}",
+            ImportChangeKind.Update => $"Update {tableId}",
+            ImportChangeKind.Unchanged => $"No changes for {tableId}",
+            ImportChangeKind.Remove => $"Existing catalog file not present in source schema: {tableId}",
+            _ => tableId
+        };
+
+    private static IReadOnlyList<string> DetectTableDrift(TableDefinition existing, TableDefinition imported)
+    {
+        var drift = new List<string>();
+
+        if (!string.Equals(existing.Database, imported.Database, StringComparison.OrdinalIgnoreCase))
+        {
+            drift.Add($"Database changed: {existing.Database} -> {imported.Database}");
+        }
+
+        if (!string.Equals(existing.Schema, imported.Schema, StringComparison.OrdinalIgnoreCase))
+        {
+            drift.Add($"Schema changed: {existing.Schema} -> {imported.Schema}");
+        }
+
+        var existingColumns = existing.Columns.ToDictionary(c => c.Name, StringComparer.OrdinalIgnoreCase);
+        var importedColumns = imported.Columns.ToDictionary(c => c.Name, StringComparer.OrdinalIgnoreCase);
+
+        foreach (var name in importedColumns.Keys.Except(existingColumns.Keys, StringComparer.OrdinalIgnoreCase).OrderBy(x => x, StringComparer.OrdinalIgnoreCase))
+        {
+            drift.Add($"Column added: {name}");
+        }
+
+        foreach (var name in existingColumns.Keys.Except(importedColumns.Keys, StringComparer.OrdinalIgnoreCase).OrderBy(x => x, StringComparer.OrdinalIgnoreCase))
+        {
+            drift.Add($"Column removed: {name}");
+        }
+
+        foreach (var name in importedColumns.Keys.Intersect(existingColumns.Keys, StringComparer.OrdinalIgnoreCase).OrderBy(x => x, StringComparer.OrdinalIgnoreCase))
+        {
+            var current = existingColumns[name];
+            var source = importedColumns[name];
+
+            if (!string.Equals(current.Type, source.Type, StringComparison.OrdinalIgnoreCase))
+            {
+                drift.Add($"Column type changed: {name} {current.Type} -> {source.Type}");
+            }
+
+            if (current.Pk != source.Pk)
+            {
+                drift.Add($"Column PK changed: {name} {current.Pk} -> {source.Pk}");
+            }
+
+            if (!string.Equals(current.Fk ?? string.Empty, source.Fk ?? string.Empty, StringComparison.OrdinalIgnoreCase))
+            {
+                drift.Add($"Column FK changed: {name} {(current.Fk ?? "<none>")} -> {(source.Fk ?? "<none>")}");
+            }
+        }
+
+        return drift;
+    }
 
     private static async Task<SchemaRows> ReadSchemaAsync(string connectionString, CancellationToken cancellationToken)
     {
@@ -271,7 +409,32 @@ public sealed class SqlServerImporter
         IReadOnlyCollection<SqlForeignKeyRow> ForeignKeys);
 }
 
-public sealed record ImportResult(IReadOnlyList<TableDefinition> Tables, IReadOnlyList<string> FilesWritten, IReadOnlyList<string> Warnings);
+public sealed record ImportOptions(bool DryRun = false);
+public sealed record ImportPlan(
+    IReadOnlyList<TableDefinition> Tables,
+    IReadOnlyList<PlannedCatalogWrite> Writes,
+    IReadOnlyList<ImportChange> Changes,
+    IReadOnlyList<string> Warnings);
+public sealed record PlannedCatalogWrite(string FilePath, string Content, TableDefinition Table);
+public sealed record ImportResult(
+    IReadOnlyList<TableDefinition> Tables,
+    IReadOnlyList<string> FilesWritten,
+    IReadOnlyList<string> Warnings,
+    IReadOnlyList<ImportChange> Changes,
+    bool IsDryRun);
+public sealed record ImportChange(
+    string TableId,
+    string? FilePath,
+    ImportChangeKind Kind,
+    string Summary,
+    IReadOnlyList<string> DriftDetails);
+public enum ImportChangeKind
+{
+    Create,
+    Update,
+    Unchanged,
+    Remove
+}
 
 public sealed record SqlTableRow(string DatabaseName, string SchemaName, string TableName);
 public sealed record SqlColumnRow(string SchemaName, string TableName, string ColumnName, string DataType, int OrdinalPosition, bool IsPrimaryKey);

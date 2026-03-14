@@ -1,0 +1,15 @@
+id: crm
+type: system
+name: Salesforce
+title: Salesforce CRM
+description: Source CRM system for customers and orders
+kind: saas
+boundary: external
+owner:
+  team: Commercial Systems
+tags:
+  - source-system
+technology:
+  vendor: Salesforce
+status: active
+criticality: high

@@ -1,0 +1,9 @@
+id: sales
+type: domain
+name: Sales
+description: Commercial sales domain
+owner:
+  team: Commercial Systems
+tags:
+  - business-domain
+status: active

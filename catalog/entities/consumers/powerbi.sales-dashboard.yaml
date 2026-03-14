@@ -1,0 +1,8 @@
+id: powerbi.sales-dashboard
+type: consumer
+name: Sales Dashboard
+description: Power BI dashboard used by sales leadership
+boundary: internal
+owner:
+  team: Sales Operations
+status: active

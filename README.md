@@ -31,6 +31,22 @@ SQL Server import (slice 9):
 dotnet run --project src/GitCatalog.Cli -- import-sqlserver "Server=localhost;Database=sales;Trusted_Connection=True;TrustServerCertificate=True;" .
 ```
 
+Configurable governance policy (slice 10):
+
+Policy file:
+
+```text
+catalog/governance/policy.yaml
+```
+
+You can enable or disable governance rules and set severity (`info`, `warn`, `error`) per rule.
+
+SQL Server import preview (slice 11):
+
+```bash
+dotnet run --project src/GitCatalog.Cli -- import-sqlserver --dry-run "Server=localhost;Database=sales;Trusted_Connection=True;TrustServerCertificate=True;" .
+```
+
 The import command introspects SQL Server metadata and writes YAML table files to `catalog/tables`.
 
 ## Planning and Status

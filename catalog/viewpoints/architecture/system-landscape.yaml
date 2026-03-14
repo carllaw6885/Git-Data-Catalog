@@ -1,0 +1,14 @@
+id: system-landscape
+name: System Landscape
+description: High-level architecture view of systems, domains, and consumers
+includeEntityTypes:
+  - system
+  - domain
+  - consumer
+  - external_vendor
+includeRelationshipTypes:
+  - belongs_to
+  - depends_on
+  - publishes_to
+  - ingests_from
+layout: LR

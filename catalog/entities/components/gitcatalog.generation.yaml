@@ -1,0 +1,8 @@
+id: gitcatalog.generation
+type: component
+name: Diagram Generation Engine
+description: Generates Mermaid diagrams from catalog metadata
+container: gitcatalog.cli
+owner:
+  team: Architecture Enablement
+status: active

@@ -1,0 +1,6 @@
+id: rel.curated-to-dashboard
+type: publishes_to
+from: sales.orders-curated
+to: powerbi.sales-dashboard
+description: Curated orders dataset feeds the sales dashboard
+direction: unidirectional

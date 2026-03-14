@@ -1,0 +1,9 @@
+id: rel.crm-to-sales-order
+type: ingests_from
+from: crm
+to: sales.order
+description: CRM order data is ingested into the operational sales order table
+direction: unidirectional
+criticality: high
+technology:
+  type: azure-data-factory

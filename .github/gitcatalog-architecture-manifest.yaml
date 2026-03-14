@@ -1,0 +1,46 @@
+architecture_schema:
+  mode: canonical_graph
+  description: >
+    GitCatalog architecture, lineage, C4, governance and site exploration
+    must be driven from a single graph-based metadata model.
+
+graph:
+  entities:
+    - database
+    - schema
+    - table
+    - column
+    - system
+    - interface
+    - pipeline
+    - dataset
+    - domain
+    - consumer
+    - actor
+    - container
+    - component
+    - external_vendor
+    - data_product
+
+  relationships:
+    - depends_on
+    - reads_from
+    - writes_to
+    - publishes_to
+    - owned_by
+    - belongs_to
+    - implements
+    - exposes
+    - ingests_from
+    - feeds
+    - uses
+    - syncs_to
+    - contains
+    - maps_to
+
+rules:
+  single_graph_source_of_truth: true
+  generators_must_use_graph: true
+  site_must_use_graph: true
+  governance_must_validate_entities_and_relationships: true
+  deterministic_output: true

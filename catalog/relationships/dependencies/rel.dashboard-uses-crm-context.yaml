@@ -1,0 +1,6 @@
+id: rel.dashboard-uses-crm-context
+type: depends_on
+from: powerbi.sales-dashboard
+to: crm
+description: Sales reporting depends on CRM-originated commercial context
+direction: unidirectional
