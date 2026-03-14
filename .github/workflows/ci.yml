@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  quality-gates:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore
+        run: dotnet restore GitCatalog.sln
+
+      - name: Build
+        run: dotnet build GitCatalog.sln --no-restore
+
+      - name: Test
+        run: dotnet test GitCatalog.sln --no-build
+
+      - name: Validate Catalog
+        run: dotnet run --project src/GitCatalog.Cli -- validate .
+
+      - name: Lint Governance
+        run: dotnet run --project src/GitCatalog.Cli -- lint .
+
+      - name: Generate Artifacts
+        run: dotnet run --project src/GitCatalog.Cli -- generate-all .
+
+      - name: Verify Deterministic Outputs
+        run: |
+          if [[ -n "$(git status --porcelain)" ]]; then
+            echo "Generated outputs are not deterministic or committed files are stale."
+            git status --short
+            git --no-pager diff -- . ':(exclude)**/bin/**' ':(exclude)**/obj/**' || true
+            exit 1
+          fi

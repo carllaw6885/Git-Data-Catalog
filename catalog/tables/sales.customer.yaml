@@ -1,0 +1,13 @@
+id: sales.customer
+database: sales
+schema: dbo
+description: Customer master table
+
+owner:
+  team: Commercial Systems
+
+columns:
+  - name: CustomerId
+    type: bigint
+    pk: true
+    description: Primary key

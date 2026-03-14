@@ -2,6 +2,7 @@
   "generatedRoot": "../generated",
   "erPath": "../generated/er.mmd",
   "tables": [
+    "sales.customer",
     "sales.order"
   ]
 }

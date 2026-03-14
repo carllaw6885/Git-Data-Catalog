@@ -53,3 +53,15 @@ The import command introspects SQL Server metadata and writes YAML table files t
 
 - Vertical slice plan and checklist: docs/AI_IMPLEMENTATION_PLAYBOOK.md
 - Current implementation status: docs/IMPLEMENTATION_STATUS.md
+
+## CI Quality Gates
+
+GitHub Actions workflow: `.github/workflows/ci.yml`
+
+Current CI gates run:
+
+- restore/build/test
+- catalog validate
+- governance lint
+- generate-all
+- deterministic output check (fails if tracked files change after generation)
