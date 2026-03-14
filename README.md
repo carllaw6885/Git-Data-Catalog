@@ -87,6 +87,10 @@ C4 metadata model (slice 20):
 
 The canonical graph now maps C4 context/container/component models through level-aware filtering, providing a shared in-memory model for upcoming C4 diagram generators.
 
+C4 context generation (slice 21):
+
+`generate-all` now renders a C4 context diagram to `docs/generated/c4/context.mmd`.
+
 ## Planning and Status
 
 - Vertical slice plan and checklist: docs/AI_IMPLEMENTATION_PLAYBOOK.md

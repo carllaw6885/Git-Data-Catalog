@@ -210,6 +210,17 @@ public static class Program
 		WriteIfChanged(domainPath, domainAsset.Content);
 		Console.WriteLine("Generated domain dependency diagrams: 1");
 
+		var c4Context = C4Generator.GenerateContext(graph);
+		var c4ContextPath = Path.Combine(outputPath, c4Context.RelativePath);
+		var c4ContextDirectory = Path.GetDirectoryName(c4ContextPath);
+		if (!string.IsNullOrWhiteSpace(c4ContextDirectory))
+		{
+			Directory.CreateDirectory(c4ContextDirectory);
+		}
+
+		WriteIfChanged(c4ContextPath, c4Context.Content);
+		Console.WriteLine("Generated C4 context diagrams: 1");
+
 		var siteOutputPath = Path.Combine(repoRoot, "docs", "site");
 		Directory.CreateDirectory(siteOutputPath);
 		var siteAssets = StaticSiteGenerator.GenerateSiteAssets(loadResult.Tables);

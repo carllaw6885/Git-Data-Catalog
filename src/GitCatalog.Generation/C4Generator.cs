@@ -1,0 +1,72 @@
+using GitCatalog.Core;
+using System.Text;
+
+namespace GitCatalog.Generation;
+
+public static class C4Generator
+{
+    public static GeneratedAsset GenerateContext(CatalogGraph graph)
+    {
+        var model = C4ModelBuilder.Build(graph, C4Level.Context);
+        var layout = ResolveLayout(graph, "c4-context", "LR");
+
+        var sb = new StringBuilder();
+        sb.AppendLine($"flowchart {layout}");
+
+        var nodeIds = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var index = 0;
+
+        foreach (var node in model.Nodes.OrderBy(n => n.Id, StringComparer.OrdinalIgnoreCase))
+        {
+            var nodeId = $"C{index++}";
+            nodeIds[node.Id] = nodeId;
+
+            var label = string.IsNullOrWhiteSpace(node.Label) ? node.Id : node.Label;
+            sb.AppendLine($"  {nodeId}[\"{Escape(label)}\"]");
+        }
+
+        foreach (var edge in model.Edges.OrderBy(e => e.Id, StringComparer.OrdinalIgnoreCase))
+        {
+            if (!nodeIds.TryGetValue(edge.From, out var from) || !nodeIds.TryGetValue(edge.To, out var to))
+            {
+                continue;
+            }
+
+            var label = ToRelationshipLabel(edge.Type);
+            sb.AppendLine($"  {from} -->|{label}| {to}");
+        }
+
+        return new GeneratedAsset("c4/context.mmd", sb.ToString());
+    }
+
+    private static string ResolveLayout(CatalogGraph graph, string viewpointId, string fallback)
+    {
+        var viewpoint = graph.Viewpoints.FirstOrDefault(v => v.Id.Equals(viewpointId, StringComparison.OrdinalIgnoreCase));
+        if (viewpoint is null || string.IsNullOrWhiteSpace(viewpoint.Layout))
+        {
+            return fallback;
+        }
+
+        return viewpoint.Layout;
+    }
+
+    private static string ToRelationshipLabel(CatalogRelationshipType type)
+    {
+        var raw = type.ToString();
+        var chars = new List<char>(raw.Length + 8);
+        foreach (var c in raw)
+        {
+            if (char.IsUpper(c) && chars.Count > 0)
+            {
+                chars.Add('_');
+            }
+
+            chars.Add(char.ToLowerInvariant(c));
+        }
+
+        return new string(chars.ToArray());
+    }
+
+    private static string Escape(string value)
+        => value.Replace("\"", "\\\"", StringComparison.Ordinal);
+}

@@ -972,6 +972,41 @@ public class CatalogTests
     }
 
     [Fact]
+    public void C4Generator_GenerateContext_Produces_Context_Diagram()
+    {
+        var graph = new CatalogGraph(
+            [
+                new CatalogEntity { Id = "actor.sales", Type = CatalogEntityType.Actor, Name = "Sales Analyst" },
+                new CatalogEntity { Id = "crm", Type = CatalogEntityType.System, Name = "CRM" },
+                new CatalogEntity { Id = "vendor.sf", Type = CatalogEntityType.ExternalVendor, Name = "Salesforce" },
+                new CatalogEntity { Id = "sales-db", Type = CatalogEntityType.Container, Name = "Sales DB" }
+            ],
+            [
+                new CatalogRelationship { Id = "rel1", Type = CatalogRelationshipType.Uses, From = "actor.sales", To = "crm" },
+                new CatalogRelationship { Id = "rel2", Type = CatalogRelationshipType.SyncsTo, From = "crm", To = "vendor.sf" },
+                new CatalogRelationship { Id = "rel3", Type = CatalogRelationshipType.Contains, From = "crm", To = "sales-db" }
+            ],
+            [
+                new CatalogViewpoint
+                {
+                    Id = "c4-context",
+                    Name = "C4 Context",
+                    Layout = "TB"
+                }
+            ],
+            []);
+
+        var diagram = C4Generator.GenerateContext(graph);
+
+        Assert.Equal("c4/context.mmd", diagram.RelativePath);
+        Assert.Contains("flowchart TB", diagram.Content);
+        Assert.Contains("uses", diagram.Content);
+        Assert.Contains("syncs_to", diagram.Content);
+        Assert.DoesNotContain("contains", diagram.Content);
+        Assert.DoesNotContain("Sales DB", diagram.Content);
+    }
+
+    [Fact]
     public void GraphGovernance_Flags_Missing_Dataset_Classification()
     {
         var graph = new CatalogGraph(
