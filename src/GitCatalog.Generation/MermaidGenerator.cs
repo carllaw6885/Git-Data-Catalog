@@ -43,7 +43,63 @@ public static class MermaidGenerator
         return sb.ToString();
     }
 
+    public static string GenerateGraphView(CatalogGraph graph, CatalogViewpoint viewpoint)
+    {
+        var filtered = CatalogViewpointService.Filter(graph, viewpoint);
+        var sb = new StringBuilder();
+        var layout = string.IsNullOrWhiteSpace(viewpoint.Layout) ? "LR" : viewpoint.Layout;
+        sb.AppendLine($"flowchart {layout}");
+
+        var idMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var index = 0;
+
+        foreach (var entity in filtered.Entities)
+        {
+            var nodeId = $"N{index++}";
+            idMap[entity.Id] = nodeId;
+
+            var label = string.IsNullOrWhiteSpace(entity.Title)
+                ? (string.IsNullOrWhiteSpace(entity.Name) ? entity.Id : entity.Name)
+                : entity.Title;
+
+            sb.AppendLine($"  {nodeId}[\"{Escape(label)}\"]");
+        }
+
+        foreach (var rel in filtered.Relationships)
+        {
+            if (!idMap.TryGetValue(rel.From, out var fromId) || !idMap.TryGetValue(rel.To, out var toId))
+            {
+                continue;
+            }
+
+            var label = ToRelationshipLabel(rel.Type);
+            sb.AppendLine($"  {fromId} -->|{label}| {toId}");
+        }
+
+        return sb.ToString();
+    }
+
     private static string ToEntityName(string id) => id.Replace('.', '_');
+
+    private static string ToRelationshipLabel(CatalogRelationshipType type)
+    {
+        var raw = type.ToString();
+        var chars = new List<char>(raw.Length + 8);
+        foreach (var c in raw)
+        {
+            if (char.IsUpper(c) && chars.Count > 0)
+            {
+                chars.Add('_');
+            }
+
+            chars.Add(char.ToLowerInvariant(c));
+        }
+
+        return new string(chars.ToArray());
+    }
+
+    private static string Escape(string value)
+        => value.Replace("\"", "\\\"", StringComparison.Ordinal);
 
     private static string? ParseForeignKeyTargetTable(string fk)
     {

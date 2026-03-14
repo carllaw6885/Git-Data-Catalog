@@ -11,11 +11,12 @@ Slice 13 – Publishing workflow
 Slice 14 – Performance hardening
 Slice 15 – Security and operational readiness
 Slice 16 – Architecture schema pack and validator
-
-## In Progress
 Slice 17 – System architecture diagram generator
 
+## In Progress
+Slice 18 – Data lineage generator
+
 ## Planned
-Slices 18–31
+Slices 19–31
 
 Refer to AI_IMPLEMENTATION_PLAYBOOK.md for detailed sequence.

@@ -132,7 +132,13 @@ public static class Program
 
 		var errors = CatalogValidator.Validate(loadResult.Tables).ToList();
 		PrintLines(errors);
-		if (loadResult.Diagnostics.Count > 0 || errors.Count > 0)
+
+		var graph = CatalogGraphLoader.Load(repoRoot);
+		PrintLines(graph.Diagnostics);
+		var graphErrors = CatalogGraphValidator.Validate(graph).ToList();
+		PrintLines(graphErrors);
+
+		if (loadResult.Diagnostics.Count > 0 || errors.Count > 0 || graph.Diagnostics.Count > 0 || graphErrors.Count > 0)
 		{
 			return 1;
 		}
@@ -164,6 +170,19 @@ public static class Program
 		}
 
 		Console.WriteLine($"Generated Markdown docs: {docs.Count}");
+
+		var viewpointOutputPath = Path.Combine(outputPath, "viewpoints");
+		Directory.CreateDirectory(viewpointOutputPath);
+		var generatedViews = 0;
+		foreach (var viewpoint in graph.Viewpoints)
+		{
+			var view = MermaidGenerator.GenerateGraphView(graph, viewpoint);
+			var path = Path.Combine(viewpointOutputPath, $"{viewpoint.Id}.mmd");
+			WriteIfChanged(path, view);
+			generatedViews++;
+		}
+
+		Console.WriteLine($"Generated graph viewpoints: {generatedViews}");
 
 		var siteOutputPath = Path.Combine(repoRoot, "docs", "site");
 		Directory.CreateDirectory(siteOutputPath);

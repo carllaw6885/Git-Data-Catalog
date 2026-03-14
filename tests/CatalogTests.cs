@@ -274,6 +274,39 @@ public class CatalogTests
     }
 
     [Fact]
+    public void GenerateGraphView_Emits_Flowchart_From_Viewpoint_Filter()
+    {
+        var graph = new CatalogGraph(
+            [
+                new CatalogEntity { Id = "crm", Type = CatalogEntityType.System, Name = "CRM" },
+                new CatalogEntity { Id = "sales", Type = CatalogEntityType.Domain, Name = "Sales" },
+                new CatalogEntity { Id = "orders", Type = CatalogEntityType.Table, Name = "Orders" }
+            ],
+            [
+                new CatalogRelationship { Id = "rel1", Type = CatalogRelationshipType.BelongsTo, From = "crm", To = "sales" },
+                new CatalogRelationship { Id = "rel2", Type = CatalogRelationshipType.ReadsFrom, From = "crm", To = "orders" }
+            ],
+            [],
+            []);
+
+        var viewpoint = new CatalogViewpoint
+        {
+            Id = "system-landscape",
+            Name = "System Landscape",
+            Layout = "LR",
+            IncludeEntityTypes = [CatalogEntityType.System, CatalogEntityType.Domain],
+            IncludeRelationshipTypes = [CatalogRelationshipType.BelongsTo, CatalogRelationshipType.ReadsFrom]
+        };
+
+        var mermaid = MermaidGenerator.GenerateGraphView(graph, viewpoint);
+
+        Assert.Contains("flowchart LR", mermaid);
+        Assert.Contains("belongs_to", mermaid);
+        Assert.DoesNotContain("reads_from", mermaid);
+        Assert.DoesNotContain("Orders", mermaid);
+    }
+
+    [Fact]
     public void GenerateCatalogDocs_Emits_Index_And_Table_Page()
     {
         var docs = MarkdownGenerator.GenerateCatalogDocs(

@@ -71,6 +71,10 @@ Supported import options:
 
 The import command introspects SQL Server metadata and writes YAML table files to `catalog/tables`.
 
+Graph-based architecture generation (slice 17):
+
+`generate-all` now also renders Mermaid viewpoint diagrams from the canonical graph model in `docs/generated/viewpoints/*.mmd`.
+
 ## Planning and Status
 
 - Vertical slice plan and checklist: docs/AI_IMPLEMENTATION_PLAYBOOK.md
