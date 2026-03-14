@@ -6,6 +6,7 @@
     <ProjectReference Include="..\GitCatalog.Validation\GitCatalog.Validation.csproj" />
     <ProjectReference Include="..\GitCatalog.Governance\GitCatalog.Governance.csproj" />
     <ProjectReference Include="..\GitCatalog.Generation\GitCatalog.Generation.csproj" />
+    <ProjectReference Include="..\GitCatalog.Import\GitCatalog.Import.csproj" />
   </ItemGroup>
 
   <PropertyGroup>

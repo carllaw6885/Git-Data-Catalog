@@ -24,6 +24,7 @@
     <ProjectReference Include="..\src\GitCatalog.Validation\GitCatalog.Validation.csproj" />
     <ProjectReference Include="..\src\GitCatalog.Governance\GitCatalog.Governance.csproj" />
     <ProjectReference Include="..\src\GitCatalog.Generation\GitCatalog.Generation.csproj" />
+    <ProjectReference Include="..\src\GitCatalog.Import\GitCatalog.Import.csproj" />
   </ItemGroup>
 
 </Project>

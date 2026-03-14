@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>GitCatalog Site</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="app.css" />
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+    window.__gitcatalog_mermaid = mermaid;
+  </script>
+</head>
+<body>
+  <div class="bg-glow bg-glow-a"></div>
+  <div class="bg-glow bg-glow-b"></div>
+  <header class="topbar">
+    <div class="brand">GitCatalog</div>
+    <div class="subtitle">Interactive Architecture Site</div>
+  </header>
+
+  <main class="layout">
+    <aside class="sidebar">
+      <label class="label" for="table-search">Find table</label>
+      <input id="table-search" type="search" placeholder="sales.order" />
+
+      <button id="show-overview" class="nav-btn nav-btn-primary" type="button">Overview</button>
+      <button id="show-er" class="nav-btn" type="button">ER Diagram</button>
+
+      <div class="tables-header">Tables</div>
+      <nav id="tables-nav" class="tables-nav"></nav>
+    </aside>
+
+    <section class="content-wrap">
+      <article id="content" class="content"></article>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,7 @@
+{
+  "generatedRoot": "../generated",
+  "erPath": "../generated/er.mmd",
+  "tables": [
+    "sales.order"
+  ]
+}
