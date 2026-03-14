@@ -23,7 +23,7 @@ public static class StaticSiteGenerator
             .Where(e => e.Type is not (CatalogEntityType.Table or CatalogEntityType.Column))
             .OrderBy(e => e.Type.ToString(), StringComparer.OrdinalIgnoreCase)
             .ThenBy(e => e.Id, StringComparer.OrdinalIgnoreCase)
-            .Select(e => new SiteEntitySummary(e.Id, e.Name, e.Type.ToString(), e.Domain))
+            .Select(e => new SiteEntitySummary(e.Id, e.Name, e.Type.ToString(), e.Domain, e.Description, e.Owner.Team))
             .ToArray();
 
     var lineagePaths = graph.Viewpoints
@@ -106,6 +106,7 @@ public static class StaticSiteGenerator
 
       <button id="show-overview" class="nav-btn nav-btn-primary" type="button">Overview</button>
       <button id="show-er" class="nav-btn" type="button">ER Diagram</button>
+  <button id="show-architecture" class="nav-btn" type="button">Architecture Explorer</button>
 
       <div class="section-header">Lineage &amp; Domain</div>
       <button id="show-lineage" class="nav-btn" type="button">Data Lineage</button>
@@ -349,6 +350,29 @@ body {
   background: rgba(56, 189, 248, 0.15);
   border: 1px solid rgba(56, 189, 248, 0.45);
   color: var(--accent-2);
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+  margin: 12px 0;
+}
+
+.detail-card {
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 10px;
+  padding: 10px;
+  background: rgba(15, 23, 42, 0.58);
+}
+
+.detail-card strong {
+  display: block;
+  color: var(--text-dim);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 4px;
+}
 }
 
 .content table {
@@ -405,6 +429,7 @@ const searchEl = document.getElementById('table-search');
 const typeFilterEl = document.getElementById('type-filter');
 const overviewBtn = document.getElementById('show-overview');
 const erBtn = document.getElementById('show-er');
+const architectureBtn = document.getElementById('show-architecture');
 const lineageBtn = document.getElementById('show-lineage');
 const domainDepsBtn = document.getElementById('show-domain-deps');
 const c4ContextBtn = document.getElementById('show-c4-context');
@@ -435,6 +460,7 @@ async function bootstrap() {
 function wireEvents() {
   overviewBtn.addEventListener('click', () => showOverview());
   erBtn.addEventListener('click', () => showMermaidDiagram(state.manifest.erPath, 'Entity Relationship Diagram'));
+    architectureBtn.addEventListener('click', () => showArchitectureExplorer());
   lineageBtn.addEventListener('click', () => {
     const paths = state.manifest.lineagePaths ?? [];
     if (paths.length === 1) {
@@ -568,15 +594,56 @@ function showEntity(entity) {
   state.activeTable = null;
   renderTableNav(getCurrentVisibleTableIds());
 
-  const domain = entity.domain
-    ? `<p><strong>Domain:</strong> <span class="badge">${escapeHtml(entity.domain)}</span></p>`
-    : '';
+  const domain = entity.domain ? `<span class="badge">${escapeHtml(entity.domain)}</span>` : '<span class="badge">none</span>';
+  const description = entity.description ? `<p>${escapeHtml(entity.description)}</p>` : '<p class="loading">No description metadata provided.</p>';
+
   contentEl.innerHTML = `
     <h1>${escapeHtml(entity.name)}</h1>
-    <p><strong>Type:</strong> <span class="badge">${escapeHtml(entity.type)}</span></p>
-    <p><strong>ID:</strong> <code>${escapeHtml(entity.id)}</code></p>
-    ${domain}
+    ${description}
+    <div class="detail-grid">
+      <div class="detail-card"><strong>Type</strong><span class="badge">${escapeHtml(entity.type)}</span></div>
+      <div class="detail-card"><strong>ID</strong><code>${escapeHtml(entity.id)}</code></div>
+      <div class="detail-card"><strong>Domain</strong>${domain}</div>
+      <div class="detail-card"><strong>Owner</strong>${entity.ownerTeam ? escapeHtml(entity.ownerTeam) : '<span class="badge">unassigned</span>'}</div>
+    </div>
   `;
+}
+
+function showArchitectureExplorer() {
+  state.activeTable = null;
+  renderTableNav(getCurrentVisibleTableIds());
+
+  const groups = new Map();
+  for (const entity of state.allEntities) {
+    const type = entity.type || 'Unknown';
+    if (!groups.has(type)) {
+      groups.set(type, []);
+    }
+    groups.get(type).push(entity);
+  }
+
+  const sections = [...groups.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([type, entities]) => {
+      const rows = entities
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .map(e => `<li><a href="#" class="table-link" onclick="event.preventDefault(); showEntityById('${escapeHtml(e.id)}')">${escapeHtml(e.name)}</a></li>`)
+        .join('');
+      return `<section><h2>${escapeHtml(type)} <span class="badge">${entities.length}</span></h2><ul style="list-style:none;padding:0">${rows}</ul></section>`;
+    })
+    .join('');
+
+  contentEl.innerHTML = `<h1>Architecture Explorer</h1>${sections || '<p class="loading">No architecture entities found.</p>'}`;
+}
+
+function showEntityById(entityId) {
+  const entity = state.allEntities.find(e => e.id === entityId);
+  if (!entity) {
+    contentEl.innerHTML = `<h1>Entity Not Found</h1><p class="diagram-error">Unknown entity: ${escapeHtml(entityId)}</p>`;
+    return;
+  }
+
+  showEntity(entity);
 }
 
 function showDiagramList(title, paths) {
@@ -652,4 +719,4 @@ public sealed record SiteManifest(
     string C4ComponentPath,
     IReadOnlyList<SiteEntitySummary> Entities);
 
-public sealed record SiteEntitySummary(string Id, string Name, string Type, string? Domain);
+public sealed record SiteEntitySummary(string Id, string Name, string Type, string? Domain, string? Description, string? OwnerTeam);

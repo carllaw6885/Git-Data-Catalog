@@ -1174,5 +1174,37 @@ public class CatalogTests
         Assert.Contains("typeFilter", js);
         Assert.Contains("#type-filter", css);
     }
+
+    [Fact]
+    public void GenerateSiteAssets_Has_Architecture_Explorer_Wiring()
+    {
+        var graph = new CatalogGraph(
+            [
+                new CatalogEntity
+                {
+                    Id = "sys.core",
+                    Name = "Core System",
+                    Type = CatalogEntityType.System,
+                    Description = "Core operations system",
+                    Owner = new OwnerDefinition { Team = "Platform" }
+                }
+            ],
+            [],
+            [],
+            []);
+
+        var assets = StaticSiteGenerator.GenerateSiteAssets([], graph);
+        var html = assets.Single(a => a.RelativePath == "index.html").Content;
+        var js = assets.Single(a => a.RelativePath == "app.js").Content;
+        var css = assets.Single(a => a.RelativePath == "app.css").Content;
+        var manifest = assets.Single(a => a.RelativePath == "manifest.json").Content;
+
+        Assert.Contains("show-architecture", html);
+        Assert.Contains("showArchitectureExplorer", js);
+        Assert.Contains("showEntityById", js);
+        Assert.Contains("detail-grid", css);
+        Assert.Contains("\"ownerTeam\": \"Platform\"", manifest);
+        Assert.Contains("\"description\": \"Core operations system\"", manifest);
+    }
 }
 
