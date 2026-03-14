@@ -25,49 +25,65 @@
       "id": "sales-analyst",
       "name": "Sales Analyst",
       "type": "Actor",
-      "domain": null
+      "domain": null,
+      "description": "Business analyst consuming curated reporting",
+      "ownerTeam": "Sales Operations"
     },
     {
       "id": "gitcatalog.generation",
       "name": "Diagram Generation Engine",
       "type": "Component",
-      "domain": null
+      "domain": null,
+      "description": "Generates Mermaid diagrams from catalog metadata",
+      "ownerTeam": "Architecture Enablement"
     },
     {
       "id": "powerbi.sales-dashboard",
       "name": "Sales Dashboard",
       "type": "Consumer",
-      "domain": null
+      "domain": null,
+      "description": "Power BI dashboard used by sales leadership",
+      "ownerTeam": "Sales Operations"
     },
     {
       "id": "sales-db",
       "name": "Sales Database",
       "type": "Container",
-      "domain": "sales"
+      "domain": "sales",
+      "description": "Operational SQL database for sales platform",
+      "ownerTeam": "Data Platform"
     },
     {
       "id": "sales.orders-curated",
       "name": "Orders Curated",
       "type": "Dataset",
-      "domain": "sales"
+      "domain": "sales",
+      "description": "Analytics-ready curated orders dataset",
+      "ownerTeam": "Data Platform"
     },
     {
       "id": "sales",
       "name": "Sales",
       "type": "Domain",
-      "domain": null
+      "domain": null,
+      "description": "Commercial sales domain",
+      "ownerTeam": "Commercial Systems"
     },
     {
       "id": "salesforce",
       "name": "Salesforce",
       "type": "ExternalVendor",
-      "domain": null
+      "domain": null,
+      "description": "Vendor providing CRM SaaS capabilities",
+      "ownerTeam": ""
     },
     {
       "id": "crm",
       "name": "Salesforce",
       "type": "System",
-      "domain": null
+      "domain": null,
+      "description": "Source CRM system for customers and orders",
+      "ownerTeam": "Commercial Systems"
     }
   ]
 }
