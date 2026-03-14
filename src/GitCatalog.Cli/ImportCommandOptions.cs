@@ -2,6 +2,7 @@ namespace GitCatalog.Cli;
 
 public sealed record ImportCommandOptions(
     string ConnectionString,
+    string Source,
     string RepoRoot,
     bool DryRun,
     int TimeoutSeconds,
@@ -17,6 +18,7 @@ public static class ImportCommandOptionsParser
     {
         var dryRun = false;
         var timeoutSeconds = 120;
+        var source = "sqlserver";
         string? connectionEnv = null;
         string? connectionFile = null;
         var positionals = new List<string>();
@@ -68,7 +70,23 @@ public static class ImportCommandOptionsParser
                 continue;
             }
 
+            if (token.Equals("--source", StringComparison.OrdinalIgnoreCase))
+            {
+                if (!TryReadOptionValue(args, ref i, out var value))
+                {
+                    return Error("Missing value for --source");
+                }
+
+                source = value.Trim().ToLowerInvariant();
+                continue;
+            }
+
             return Error($"Unknown option: {token}");
+        }
+
+        if (source is not ("sqlserver" or "postgres"))
+        {
+            return Error($"Unsupported source: {source}. Supported values are: sqlserver, postgres");
         }
 
         var namedSources = 0;
@@ -147,7 +165,7 @@ public static class ImportCommandOptionsParser
             repoRoot = Path.GetFullPath(positionals[1]);
         }
 
-        return new ImportCommandOptions(connectionString!, repoRoot, dryRun, timeoutSeconds, usesInline);
+        return new ImportCommandOptions(connectionString!, source, repoRoot, dryRun, timeoutSeconds, usesInline);
     }
 
     private static bool TryReadOptionValue(string[] args, ref int index, out string value)
@@ -171,5 +189,5 @@ public static class ImportCommandOptionsParser
         => value.Contains('=') && value.Contains(';');
 
     private static ImportCommandOptions Error(string message)
-        => new(string.Empty, string.Empty, DryRun: false, TimeoutSeconds: 120, UsesInlineConnectionString: false, Error: message);
+        => new(string.Empty, "sqlserver", string.Empty, DryRun: false, TimeoutSeconds: 120, UsesInlineConnectionString: false, Error: message);
 }

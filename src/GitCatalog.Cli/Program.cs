@@ -30,9 +30,29 @@ public static class Program
 			"validate" => RunValidate(repoRoot),
 			"lint" => RunLint(repoRoot),
 			"generate-all" => RunGenerateAll(repoRoot),
+			"import" => RunImport(args, repoRoot),
 			"import-sqlserver" => RunImportSqlServer(args, repoRoot),
 			_ => RunUnknownCommand(command)
 		};
+	}
+
+	private static int RunImport(string[] args, string repoRoot)
+	{
+		var parsed = ImportCommandOptionsParser.Parse(args, repoRoot);
+		if (!parsed.IsValid)
+		{
+			Console.Error.WriteLine(parsed.Error);
+			Console.Error.WriteLine("Usage: gitcatalog import --source <sqlserver|postgres> [--dry-run] [--timeout-seconds <n>] (<connectionString> | --connection-env <name> | --connection-file <path>) [repoRoot]");
+			return 1;
+		}
+
+		if (parsed.Source == "postgres")
+		{
+			Console.Error.WriteLine("Import source 'postgres' is recognized but not yet implemented in this release.");
+			return 1;
+		}
+
+		return RunParsedSqlServerImport(parsed);
 	}
 
 	private static int RunImportSqlServer(string[] args, string repoRoot)
@@ -44,6 +64,12 @@ public static class Program
 			Console.Error.WriteLine("Usage: gitcatalog import-sqlserver [--dry-run] [--timeout-seconds <n>] (<connectionString> | --connection-env <name> | --connection-file <path>) [repoRoot]");
 			return 1;
 		}
+
+		return RunParsedSqlServerImport(parsed with { Source = "sqlserver" });
+	}
+
+	private static int RunParsedSqlServerImport(ImportCommandOptions parsed)
+	{
 
 		try
 		{
@@ -281,7 +307,8 @@ public static class Program
 	private static void PrintHelp()
 	{
 		Console.WriteLine("GitCatalog CLI");
-		Console.WriteLine("Usage: gitcatalog <validate|lint|generate-all|import-sqlserver> [args]");
+		Console.WriteLine("Usage: gitcatalog <validate|lint|generate-all|import|import-sqlserver> [args]");
+		Console.WriteLine("import args: --source <sqlserver|postgres> [--dry-run] [--timeout-seconds <n>] (<connectionString> | --connection-env <name> | --connection-file <path>) [repoRoot]");
 		Console.WriteLine("import-sqlserver args: [--dry-run] [--timeout-seconds <n>] (<connectionString> | --connection-env <name> | --connection-file <path>) [repoRoot]");
 	}
 

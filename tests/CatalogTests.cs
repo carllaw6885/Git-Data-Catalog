@@ -796,6 +796,7 @@ public class CatalogTests
 
             Assert.True(parsed.IsValid);
             Assert.Equal("Server=.;Database=sales;User Id=sa;Password=secret;", parsed.ConnectionString);
+            Assert.Equal("sqlserver", parsed.Source);
             Assert.Equal(Path.GetFullPath("./repo"), parsed.RepoRoot);
             Assert.False(parsed.UsesInlineConnectionString);
         }
@@ -846,6 +847,26 @@ public class CatalogTests
 
         Assert.False(parsed.IsValid);
         Assert.Contains("positive integer", parsed.Error ?? string.Empty, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void ImportOptionsParser_Supports_Source_Option()
+    {
+        var args = new[] { "import", "--source", "postgres", "Server=.;Database=sales;" };
+        var parsed = ImportCommandOptionsParser.Parse(args, Directory.GetCurrentDirectory());
+
+        Assert.True(parsed.IsValid);
+        Assert.Equal("postgres", parsed.Source);
+    }
+
+    [Fact]
+    public void ImportOptionsParser_Rejects_Unknown_Source()
+    {
+        var args = new[] { "import", "--source", "mysql", "Server=.;Database=sales;" };
+        var parsed = ImportCommandOptionsParser.Parse(args, Directory.GetCurrentDirectory());
+
+        Assert.False(parsed.IsValid);
+        Assert.Contains("Unsupported source", parsed.Error ?? string.Empty, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
