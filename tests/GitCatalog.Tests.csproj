@@ -19,6 +19,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\src\GitCatalog.Cli\GitCatalog.Cli.csproj" />
     <ProjectReference Include="..\src\GitCatalog.Core\GitCatalog.Core.csproj" />
     <ProjectReference Include="..\src\GitCatalog.Serialization\GitCatalog.Serialization.csproj" />
     <ProjectReference Include="..\src\GitCatalog.Validation\GitCatalog.Validation.csproj" />

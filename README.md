@@ -47,6 +47,28 @@ SQL Server import preview (slice 11):
 dotnet run --project src/GitCatalog.Cli -- import-sqlserver --dry-run "Server=localhost;Database=sales;Trusted_Connection=True;TrustServerCertificate=True;" .
 ```
 
+Security and operational hardening (slice 15):
+
+Prefer non-inline secret sources:
+
+```bash
+export GITCATALOG_SQL_CONN="Server=localhost;Database=sales;User Id=...;Password=...;TrustServerCertificate=True;"
+dotnet run --project src/GitCatalog.Cli -- import-sqlserver --connection-env GITCATALOG_SQL_CONN --timeout-seconds 90 .
+```
+
+or:
+
+```bash
+dotnet run --project src/GitCatalog.Cli -- import-sqlserver --connection-file ./secrets/sql-connection.txt --timeout-seconds 90 .
+```
+
+Supported import options:
+
+- `--dry-run` preview changes without writing files
+- `--connection-env <name>` read connection string from environment variable
+- `--connection-file <path>` read connection string from file
+- `--timeout-seconds <n>` fail import if operation exceeds timeout
+
 The import command introspects SQL Server metadata and writes YAML table files to `catalog/tables`.
 
 ## Planning and Status

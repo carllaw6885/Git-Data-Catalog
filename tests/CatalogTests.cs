@@ -1,5 +1,6 @@
 
 using GitCatalog.Core;
+using GitCatalog.Cli;
 using GitCatalog.Generation;
 using GitCatalog.Governance;
 using GitCatalog.Import;
@@ -589,6 +590,70 @@ public class CatalogTests
 
         Assert.Single(plan.Writes);
         Assert.False(Directory.Exists(tablesPath));
+    }
+
+    [Fact]
+    public void ImportOptionsParser_Supports_ConnectionEnv_And_RepoRoot()
+    {
+        Environment.SetEnvironmentVariable("GITCATALOG_TEST_SQL_CONN", "Server=.;Database=sales;User Id=sa;Password=secret;");
+
+        try
+        {
+            var args = new[] { "import-sqlserver", "--connection-env", "GITCATALOG_TEST_SQL_CONN", "./repo" };
+            var parsed = ImportCommandOptionsParser.Parse(args, Directory.GetCurrentDirectory());
+
+            Assert.True(parsed.IsValid);
+            Assert.Equal("Server=.;Database=sales;User Id=sa;Password=secret;", parsed.ConnectionString);
+            Assert.Equal(Path.GetFullPath("./repo"), parsed.RepoRoot);
+            Assert.False(parsed.UsesInlineConnectionString);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("GITCATALOG_TEST_SQL_CONN", null);
+        }
+    }
+
+    [Fact]
+    public void ImportOptionsParser_Supports_ConnectionFile()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "gitcatalog-tests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        var connFile = Path.Combine(root, "conn.txt");
+        File.WriteAllText(connFile, "Server=.;Database=sales;User Id=sa;Password=secret;\n");
+
+        var args = new[] { "import-sqlserver", "--connection-file", connFile };
+        var parsed = ImportCommandOptionsParser.Parse(args, root);
+
+        Assert.True(parsed.IsValid);
+        Assert.Equal("Server=.;Database=sales;User Id=sa;Password=secret;", parsed.ConnectionString);
+        Assert.False(parsed.UsesInlineConnectionString);
+    }
+
+    [Fact]
+    public void ImportOptionsParser_Rejects_Multiple_Connection_Sources()
+    {
+        var args = new[]
+        {
+            "import-sqlserver",
+            "Server=.;Database=sales;",
+            "--connection-env",
+            "GITCATALOG_TEST_SQL_CONN"
+        };
+
+        var parsed = ImportCommandOptionsParser.Parse(args, Directory.GetCurrentDirectory());
+
+        Assert.False(parsed.IsValid);
+        Assert.Contains("Connection source conflict", parsed.Error ?? string.Empty, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void ImportOptionsParser_Rejects_Invalid_Timeout()
+    {
+        var args = new[] { "import-sqlserver", "--timeout-seconds", "0", "Server=.;Database=sales;" };
+        var parsed = ImportCommandOptionsParser.Parse(args, Directory.GetCurrentDirectory());
+
+        Assert.False(parsed.IsValid);
+        Assert.Contains("positive integer", parsed.Error ?? string.Empty, StringComparison.OrdinalIgnoreCase);
     }
 
     private static string CreateTempRepoWithCatalog(string fileName, string yaml)

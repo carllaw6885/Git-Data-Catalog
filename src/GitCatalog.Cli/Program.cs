@@ -3,6 +3,7 @@ using GitCatalog.Governance;
 using GitCatalog.Import;
 using GitCatalog.Serialization;
 using GitCatalog.Validation;
+using System.Text.RegularExpressions;
 
 namespace GitCatalog.Cli;
 
@@ -36,23 +37,19 @@ public static class Program
 
 	private static int RunImportSqlServer(string[] args, string repoRoot)
 	{
-		var options = args.Skip(1).Where(a => a.StartsWith("--", StringComparison.Ordinal)).ToList();
-		var positional = args.Skip(1).Where(a => !a.StartsWith("--", StringComparison.Ordinal)).ToList();
-		var dryRun = options.Contains("--dry-run", StringComparer.OrdinalIgnoreCase);
-
-		if (positional.Count < 1)
+		var parsed = ImportCommandOptionsParser.Parse(args, repoRoot);
+		if (!parsed.IsValid)
 		{
-			Console.Error.WriteLine("Missing SQL Server connection string.");
-			Console.Error.WriteLine("Usage: gitcatalog import-sqlserver [--dry-run] <connectionString> [repoRoot]");
+			Console.Error.WriteLine(parsed.Error);
+			Console.Error.WriteLine("Usage: gitcatalog import-sqlserver [--dry-run] [--timeout-seconds <n>] (<connectionString> | --connection-env <name> | --connection-file <path>) [repoRoot]");
 			return 1;
 		}
-
-		repoRoot = positional.Count > 1 ? Path.GetFullPath(positional[1]) : repoRoot;
 
 		try
 		{
 			var importer = new SqlServerImporter();
-			var result = importer.ImportAsync(positional[0], repoRoot, new ImportOptions(dryRun)).GetAwaiter().GetResult();
+			using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(parsed.TimeoutSeconds));
+			var result = importer.ImportAsync(parsed.ConnectionString, parsed.RepoRoot, new ImportOptions(parsed.DryRun), cts.Token).GetAwaiter().GetResult();
 			PrintLines(result.Warnings);
 			foreach (var change in result.Changes)
 			{
@@ -66,11 +63,21 @@ public static class Program
 			Console.WriteLine($"Wrote YAML files: {result.FilesWritten.Count}");
 			Console.WriteLine($"Import warnings: {result.Warnings.Count}");
 			Console.WriteLine($"Import dry-run: {result.IsDryRun}");
+			if (parsed.UsesInlineConnectionString)
+			{
+				Console.WriteLine("Security warning: inline connection string usage may expose secrets in shell history.");
+			}
+
 			return 0;
+		}
+		catch (OperationCanceledException)
+		{
+			Console.Error.WriteLine($"SQL import failed: operation timed out after {parsed.TimeoutSeconds} seconds.");
+			return 1;
 		}
 		catch (Exception ex)
 		{
-			Console.Error.WriteLine($"SQL import failed: {ex.Message}");
+			Console.Error.WriteLine($"SQL import failed: {SanitizeExceptionMessage(ex.Message)}");
 			return 1;
 		}
 	}
@@ -182,7 +189,28 @@ public static class Program
 	{
 		Console.WriteLine("GitCatalog CLI");
 		Console.WriteLine("Usage: gitcatalog <validate|lint|generate-all|import-sqlserver> [args]");
-		Console.WriteLine("import-sqlserver args: [--dry-run] <connectionString> [repoRoot]");
+		Console.WriteLine("import-sqlserver args: [--dry-run] [--timeout-seconds <n>] (<connectionString> | --connection-env <name> | --connection-file <path>) [repoRoot]");
+	}
+
+	private static string SanitizeExceptionMessage(string message)
+	{
+		if (string.IsNullOrWhiteSpace(message))
+		{
+			return "unknown error";
+		}
+
+		var sanitized = message;
+		sanitized = RedactConnectionToken(sanitized, "Password");
+		sanitized = RedactConnectionToken(sanitized, "Pwd");
+		sanitized = RedactConnectionToken(sanitized, "User ID");
+		sanitized = RedactConnectionToken(sanitized, "Uid");
+		return sanitized;
+	}
+
+	private static string RedactConnectionToken(string input, string key)
+	{
+		var pattern = $"{Regex.Escape(key)}\\s*=\\s*[^;\\r\\n]*";
+		return Regex.Replace(input, pattern, $"{key}=***", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
 	}
 
 	private static void WriteIfChanged(string path, string content)
