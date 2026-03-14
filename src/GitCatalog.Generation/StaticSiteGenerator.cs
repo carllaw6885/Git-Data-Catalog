@@ -26,17 +26,25 @@ public static class StaticSiteGenerator
             .Select(e => new SiteEntitySummary(e.Id, e.Name, e.Type.ToString(), e.Domain))
             .ToArray();
 
-        var manifest = JsonSerializer.Serialize(
-            new SiteManifest(
-                GeneratedRoot: "../generated",
-                ErPath: "../generated/er.mmd",
-                Tables: tableIds,
-                ViewpointIds: viewpointIds,
-                DomainDepsPath: "../generated/domain/domain-dependencies.mmd",
-                C4ContextPath: "../generated/c4/context.mmd",
-                C4ContainerPath: "../generated/c4/container.mmd",
-                C4ComponentPath: "../generated/c4/component.mmd",
-                Entities: entities),
+    var lineagePaths = graph.Viewpoints
+      .Where(v => v.Id.Contains("lineage", StringComparison.OrdinalIgnoreCase)
+           || v.Name.Contains("lineage", StringComparison.OrdinalIgnoreCase))
+      .OrderBy(v => v.Id, StringComparer.OrdinalIgnoreCase)
+      .Select(v => $"../generated/lineage/{v.Id}.mmd")
+      .ToArray();
+
+    var manifest = JsonSerializer.Serialize(
+      new SiteManifest(
+        GeneratedRoot: "../generated",
+        ErPath: "../generated/er.mmd",
+        Tables: tableIds,
+        ViewpointIds: viewpointIds,
+        LineagePaths: lineagePaths,
+        DomainDepsPath: "../generated/domain/domain-dependencies.mmd",
+        C4ContextPath: "../generated/c4/context.mmd",
+        C4ContainerPath: "../generated/c4/container.mmd",
+        C4ComponentPath: "../generated/c4/component.mmd",
+        Entities: entities),
             new JsonSerializerOptions
             {
                 WriteIndented = true,
@@ -293,6 +301,30 @@ body {
   font-family: 'IBM Plex Mono', monospace;
 }
 
+.loading {
+  color: var(--text-dim);
+  font-style: italic;
+  padding: 32px 0;
+}
+
+.diagram-error {
+  color: #f87171;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  background: rgba(56, 189, 248, 0.15);
+  border: 1px solid rgba(56, 189, 248, 0.45);
+  color: var(--accent-2);
+}
+
 .content table {
   width: 100%;
   border-collapse: collapse;
@@ -376,7 +408,16 @@ async function bootstrap() {
 function wireEvents() {
   overviewBtn.addEventListener('click', () => showOverview());
   erBtn.addEventListener('click', () => showMermaidDiagram(state.manifest.erPath, 'Entity Relationship Diagram'));
-  lineageBtn.addEventListener('click', () => showMermaidDiagram(state.manifest.lineagePath, 'Data Lineage'));
+  lineageBtn.addEventListener('click', () => {
+    const paths = state.manifest.lineagePaths ?? [];
+    if (paths.length === 1) {
+      showMermaidDiagram(paths[0], 'Data Lineage');
+    } else if (paths.length > 1) {
+      showDiagramList('Data Lineage', paths);
+    } else {
+      contentEl.innerHTML = '<h1>Data Lineage</h1><p class="loading">No lineage diagrams found. Define viewpoints with "lineage" in the id or name.</p>';
+    }
+  });
   domainDepsBtn.addEventListener('click', () => showMermaidDiagram(state.manifest.domainDepsPath, 'Domain Dependencies'));
   c4ContextBtn.addEventListener('click', () => showMermaidDiagram(state.manifest.c4ContextPath, 'C4 Context'));
   c4ContainerBtn.addEventListener('click', () => showMermaidDiagram(state.manifest.c4ContainerPath, 'C4 Container'));
@@ -478,6 +519,8 @@ async function showMermaidDiagram(path, title) {
   state.activeTable = null;
   renderTableNav(getCurrentVisibleTableIds());
 
+  contentEl.innerHTML = `<h1>${escapeHtml(title)}</h1><p class="loading">Loading diagram\u2026</p>`;
+
   try {
     const mermaidDef = await loadText(path);
     const mermaid = window.__gitcatalog_mermaid;
@@ -505,13 +548,25 @@ function showEntity(entity) {
   state.activeTable = null;
   renderTableNav(getCurrentVisibleTableIds());
 
-  const domain = entity.domain ? `<p><strong>Domain:</strong> ${escapeHtml(entity.domain)}</p>` : '';
+  const domain = entity.domain
+    ? `<p><strong>Domain:</strong> <span class="badge">${escapeHtml(entity.domain)}</span></p>`
+    : '';
   contentEl.innerHTML = `
     <h1>${escapeHtml(entity.name)}</h1>
     <p><strong>Type:</strong> <span class="badge">${escapeHtml(entity.type)}</span></p>
     <p><strong>ID:</strong> <code>${escapeHtml(entity.id)}</code></p>
     ${domain}
   `;
+}
+
+function showDiagramList(title, paths) {
+  state.activeTable = null;
+  renderTableNav(getCurrentVisibleTableIds());
+  const items = paths.map(p => {
+    const name = p.split('/').pop().replace('.mmd', '');
+    return `<li><a href="#" class="table-link" onclick="event.preventDefault(); showMermaidDiagram('${escapeHtml(p)}', '${escapeHtml(name)}')">${escapeHtml(name)}</a></li>`;
+  }).join('');
+  contentEl.innerHTML = `<h1>${escapeHtml(title)}</h1><ul style="list-style:none;padding:0">${items}</ul>`;
 }
 
 function getCurrentVisibleTableIds() {
@@ -548,6 +603,7 @@ public sealed record SiteManifest(
     string ErPath,
     IReadOnlyList<string> Tables,
     IReadOnlyList<string> ViewpointIds,
+    IReadOnlyList<string> LineagePaths,
     string DomainDepsPath,
     string C4ContextPath,
     string C4ContainerPath,

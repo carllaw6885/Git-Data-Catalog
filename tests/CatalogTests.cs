@@ -451,6 +451,23 @@ public class CatalogTests
     }
 
     [Fact]
+    public void GenerateSiteAssets_AppJs_Contains_Loading_State_And_Error_Handling()
+    {
+        var graph = new CatalogGraph([], [], [], []);
+        var assets = StaticSiteGenerator.GenerateSiteAssets([], graph);
+
+        var js = assets.Single(a => a.RelativePath == "app.js").Content;
+        var css = assets.Single(a => a.RelativePath == "app.css").Content;
+
+        Assert.Contains("loading", js);
+        Assert.Contains("diagram-error", js);
+        Assert.Contains("showMermaidDiagram", js);
+        Assert.Contains(".loading", css);
+        Assert.Contains(".diagram-error", css);
+        Assert.Contains(".badge", css);
+    }
+
+    [Fact]
     public void SqlImporter_BuildTables_Maps_Primary_And_Foreign_Keys()
     {
         var importer = new SqlServerImporter();
