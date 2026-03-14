@@ -403,11 +403,13 @@ public class CatalogTests
     [Fact]
     public void GenerateSiteAssets_Emits_Manifest_And_App_Files()
     {
+        var graph = new CatalogGraph([], [], [], []);
         var assets = StaticSiteGenerator.GenerateSiteAssets(
             [
                 new TableDefinition { Id = "sales.order" },
                 new TableDefinition { Id = "sales.customer" }
-            ]);
+            ],
+            graph);
 
         Assert.Contains(assets, a => a.RelativePath == "index.html");
         Assert.Contains(assets, a => a.RelativePath == "app.css");
@@ -417,6 +419,35 @@ public class CatalogTests
         Assert.Contains("\"generatedRoot\": \"../generated\"", manifest);
         Assert.Contains("\"sales.customer\"", manifest);
         Assert.Contains("\"sales.order\"", manifest);
+    }
+
+    [Fact]
+    public void GenerateSiteAssets_Manifest_Includes_Graph_Paths_And_Entities()
+    {
+        var graph = new CatalogGraph(
+            [
+                new CatalogEntity { Id = "sys.crm", Type = CatalogEntityType.System, Name = "CRM", Domain = "Sales" },
+                new CatalogEntity { Id = "ds.orders", Type = CatalogEntityType.Dataset, Name = "Orders" }
+            ],
+            [],
+            [
+                new CatalogViewpoint { Id = "arch-overview", Name = "Architecture Overview" },
+                new CatalogViewpoint { Id = "lineage-core", Name = "Core Lineage" }
+            ],
+            []);
+
+        var assets = StaticSiteGenerator.GenerateSiteAssets([], graph);
+        var manifest = assets.Single(a => a.RelativePath == "manifest.json").Content;
+
+        Assert.Contains("\"c4ContextPath\"", manifest);
+        Assert.Contains("\"c4ContainerPath\"", manifest);
+        Assert.Contains("\"c4ComponentPath\"", manifest);
+        Assert.Contains("\"domainDepsPath\"", manifest);
+        Assert.Contains("\"arch-overview\"", manifest);
+        Assert.Contains("\"lineage-core\"", manifest);
+        Assert.Contains("\"sys.crm\"", manifest);
+        Assert.Contains("\"ds.orders\"", manifest);
+        Assert.Contains("\"Sales\"", manifest);
     }
 
     [Fact]

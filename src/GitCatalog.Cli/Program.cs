@@ -245,7 +245,7 @@ public static class Program
 
 		var siteOutputPath = Path.Combine(repoRoot, "docs", "site");
 		Directory.CreateDirectory(siteOutputPath);
-		var siteAssets = StaticSiteGenerator.GenerateSiteAssets(loadResult.Tables);
+		var siteAssets = StaticSiteGenerator.GenerateSiteAssets(loadResult.Tables, graph);
 		foreach (var asset in siteAssets)
 		{
 			var path = Path.Combine(siteOutputPath, asset.RelativePath);

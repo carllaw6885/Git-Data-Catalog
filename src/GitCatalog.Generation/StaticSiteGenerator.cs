@@ -5,20 +5,43 @@ namespace GitCatalog.Generation;
 
 public static class StaticSiteGenerator
 {
-    public static IReadOnlyList<GeneratedDocument> GenerateSiteAssets(IEnumerable<TableDefinition> tables)
+    public static IReadOnlyList<GeneratedDocument> GenerateSiteAssets(
+        IEnumerable<TableDefinition> tables,
+        CatalogGraph graph)
     {
         var tableIds = tables
             .Select(t => t.Id)
             .OrderBy(id => id, StringComparer.OrdinalIgnoreCase)
             .ToArray();
 
+        var viewpointIds = graph.Viewpoints
+            .Select(v => v.Id)
+            .OrderBy(id => id, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        var entities = graph.Entities
+            .Where(e => e.Type is not (CatalogEntityType.Table or CatalogEntityType.Column))
+            .OrderBy(e => e.Type.ToString(), StringComparer.OrdinalIgnoreCase)
+            .ThenBy(e => e.Id, StringComparer.OrdinalIgnoreCase)
+            .Select(e => new SiteEntitySummary(e.Id, e.Name, e.Type.ToString(), e.Domain))
+            .ToArray();
+
         var manifest = JsonSerializer.Serialize(
-            new SiteManifest("../generated", "../generated/er.mmd", tableIds),
-          new JsonSerializerOptions
-          {
-            WriteIndented = true,
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-          });
+            new SiteManifest(
+                GeneratedRoot: "../generated",
+                ErPath: "../generated/er.mmd",
+                Tables: tableIds,
+                ViewpointIds: viewpointIds,
+                DomainDepsPath: "../generated/domain/domain-dependencies.mmd",
+                C4ContextPath: "../generated/c4/context.mmd",
+                C4ContainerPath: "../generated/c4/container.mmd",
+                C4ComponentPath: "../generated/c4/component.mmd",
+                Entities: entities),
+            new JsonSerializerOptions
+            {
+                WriteIndented = true,
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+            });
 
         return
         [
@@ -56,14 +79,33 @@ public static class StaticSiteGenerator
 
   <main class="layout">
     <aside class="sidebar">
-      <label class="label" for="table-search">Find table</label>
-      <input id="table-search" type="search" placeholder="sales.order" />
+      <label class="label" for="table-search">Search</label>
+      <input id="table-search" type="search" placeholder="tables, systems, pipelines…" />
 
       <button id="show-overview" class="nav-btn nav-btn-primary" type="button">Overview</button>
       <button id="show-er" class="nav-btn" type="button">ER Diagram</button>
 
-      <div class="tables-header">Tables</div>
+      <div class="section-header">Lineage &amp; Domain</div>
+      <button id="show-lineage" class="nav-btn" type="button">Data Lineage</button>
+      <button id="show-domain-deps" class="nav-btn" type="button">Domain Dependencies</button>
+
+      <div class="section-header">C4 Architecture</div>
+      <button id="show-c4-context" class="nav-btn" type="button">C4 Context</button>
+      <button id="show-c4-container" class="nav-btn" type="button">C4 Container</button>
+      <button id="show-c4-component" class="nav-btn" type="button">C4 Component</button>
+
+      <div id="viewpoints-section" style="display:none">
+        <div class="section-header">Viewpoints</div>
+        <nav id="viewpoints-nav" class="tables-nav"></nav>
+      </div>
+
+      <div class="section-header">Tables</div>
       <nav id="tables-nav" class="tables-nav"></nav>
+
+      <div id="entities-section" style="display:none">
+        <div class="section-header">Entities</div>
+        <nav id="entities-nav" class="tables-nav"></nav>
+      </div>
     </aside>
 
     <section class="content-wrap">
@@ -205,6 +247,14 @@ body {
   margin: 14px 0 8px;
 }
 
+.section-header {
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.72rem;
+  margin: 14px 0 8px;
+}
+
 .tables-nav {
   display: grid;
   gap: 6px;
@@ -283,14 +333,24 @@ body {
 const state = {
   manifest: null,
   allTables: [],
+  allEntities: [],
   activeTable: null
 };
 
 const contentEl = document.getElementById('content');
 const tablesNavEl = document.getElementById('tables-nav');
+const entitiesNavEl = document.getElementById('entities-nav');
+const entitiesSectionEl = document.getElementById('entities-section');
+const viewpointsNavEl = document.getElementById('viewpoints-nav');
+const viewpointsSectionEl = document.getElementById('viewpoints-section');
 const searchEl = document.getElementById('table-search');
 const overviewBtn = document.getElementById('show-overview');
 const erBtn = document.getElementById('show-er');
+const lineageBtn = document.getElementById('show-lineage');
+const domainDepsBtn = document.getElementById('show-domain-deps');
+const c4ContextBtn = document.getElementById('show-c4-context');
+const c4ContainerBtn = document.getElementById('show-c4-container');
+const c4ComponentBtn = document.getElementById('show-c4-component');
 
 bootstrap().catch((err) => {
   contentEl.innerHTML = `<h1>Failed to load site</h1><p>${escapeHtml(err.message)}</p>`;
@@ -304,19 +364,31 @@ async function bootstrap() {
 
   state.manifest = await res.json();
   state.allTables = state.manifest.tables ?? [];
+  state.allEntities = state.manifest.entities ?? [];
 
   renderTableNav(state.allTables);
+  renderEntitiesNav(state.allEntities);
+  renderViewpointsNav(state.manifest.viewpointIds ?? []);
   wireEvents();
   await showOverview();
 }
 
 function wireEvents() {
   overviewBtn.addEventListener('click', () => showOverview());
-  erBtn.addEventListener('click', () => showEr());
+  erBtn.addEventListener('click', () => showMermaidDiagram(state.manifest.erPath, 'Entity Relationship Diagram'));
+  lineageBtn.addEventListener('click', () => showMermaidDiagram(state.manifest.lineagePath, 'Data Lineage'));
+  domainDepsBtn.addEventListener('click', () => showMermaidDiagram(state.manifest.domainDepsPath, 'Domain Dependencies'));
+  c4ContextBtn.addEventListener('click', () => showMermaidDiagram(state.manifest.c4ContextPath, 'C4 Context'));
+  c4ContainerBtn.addEventListener('click', () => showMermaidDiagram(state.manifest.c4ContainerPath, 'C4 Container'));
+  c4ComponentBtn.addEventListener('click', () => showMermaidDiagram(state.manifest.c4ComponentPath, 'C4 Component'));
   searchEl.addEventListener('input', () => {
     const term = searchEl.value.trim().toLowerCase();
-    const filtered = state.allTables.filter(t => t.toLowerCase().includes(term));
-    renderTableNav(filtered);
+    const filteredTables = state.allTables.filter(t => t.toLowerCase().includes(term));
+    const filteredEntities = state.allEntities.filter(e =>
+      e.name.toLowerCase().includes(term) || e.id.toLowerCase().includes(term) || e.type.toLowerCase().includes(term)
+    );
+    renderTableNav(filteredTables);
+    renderEntitiesNav(filteredEntities);
   });
 }
 
@@ -336,40 +408,110 @@ function renderTableNav(tableIds) {
   }
 }
 
+function renderEntitiesNav(entities) {
+  if (!entitiesNavEl) return;
+  entitiesNavEl.innerHTML = '';
+
+  for (const entity of entities) {
+    const link = document.createElement('a');
+    link.href = '#';
+    link.className = 'table-link';
+    link.textContent = `${entity.name}`;
+    link.title = entity.type;
+    link.addEventListener('click', (ev) => {
+      ev.preventDefault();
+      showEntity(entity);
+    });
+    entitiesNavEl.appendChild(link);
+  }
+
+  if (entitiesSectionEl) {
+    entitiesSectionEl.style.display = entities.length > 0 ? '' : 'none';
+  }
+}
+
+function renderViewpointsNav(viewpointIds) {
+  if (!viewpointsNavEl) return;
+  viewpointsNavEl.innerHTML = '';
+
+  for (const vpId of viewpointIds) {
+    const btn = document.createElement('button');
+    btn.className = 'nav-btn';
+    btn.type = 'button';
+    btn.textContent = vpId;
+    btn.addEventListener('click', () => {
+      showMermaidDiagram(`${state.manifest.generatedRoot}/viewpoints/${vpId}.mmd`, vpId);
+    });
+    viewpointsNavEl.appendChild(btn);
+  }
+
+  if (viewpointsSectionEl) {
+    viewpointsSectionEl.style.display = viewpointIds.length > 0 ? '' : 'none';
+  }
+}
+
 async function showOverview() {
   state.activeTable = null;
   renderTableNav(getCurrentVisibleTableIds());
-  const markdown = await loadText(`${state.manifest.generatedRoot}/index.md`);
-  contentEl.innerHTML = marked.parse(markdown);
+
+  try {
+    const markdown = await loadText(`${state.manifest.generatedRoot}/index.md`);
+    contentEl.innerHTML = marked.parse(markdown);
+  } catch {
+    contentEl.innerHTML = `<h1>GitCatalog</h1><p>Use <code>generate-all</code> to regenerate all documentation and diagrams.</p>`;
+  }
 }
 
 async function showTable(tableId) {
   state.activeTable = tableId;
   renderTableNav(getCurrentVisibleTableIds());
-  const markdown = await loadText(`${state.manifest.generatedRoot}/tables/${tableId}.md`);
-  contentEl.innerHTML = marked.parse(markdown);
+
+  try {
+    const markdown = await loadText(`${state.manifest.generatedRoot}/tables/${tableId}.md`);
+    contentEl.innerHTML = marked.parse(markdown);
+  } catch (err) {
+    contentEl.innerHTML = `<h1>${escapeHtml(tableId)}</h1><p>Documentation not found: ${escapeHtml(err.message)}</p>`;
+  }
 }
 
-async function showEr() {
+async function showMermaidDiagram(path, title) {
   state.activeTable = null;
   renderTableNav(getCurrentVisibleTableIds());
-  const mermaidDef = await loadText(state.manifest.erPath);
-  const mermaid = window.__gitcatalog_mermaid;
 
-  mermaid.initialize({
-    startOnLoad: false,
-    theme: 'base',
-    themeVariables: {
-      primaryColor: '#1d4ed8',
-      primaryTextColor: '#0f172a',
-      lineColor: '#0ea5e9',
-      fontFamily: 'Manrope'
-    }
-  });
+  try {
+    const mermaidDef = await loadText(path);
+    const mermaid = window.__gitcatalog_mermaid;
 
-  const id = `er_${Date.now()}`;
-  const rendered = await mermaid.render(id, mermaidDef);
-  contentEl.innerHTML = `<h1>Entity Relationship Diagram</h1>${rendered.svg}`;
+    mermaid.initialize({
+      startOnLoad: false,
+      theme: 'base',
+      themeVariables: {
+        primaryColor: '#1d4ed8',
+        primaryTextColor: '#0f172a',
+        lineColor: '#0ea5e9',
+        fontFamily: 'Manrope'
+      }
+    });
+
+    const id = `diagram_${Date.now()}`;
+    const rendered = await mermaid.render(id, mermaidDef);
+    contentEl.innerHTML = `<h1>${escapeHtml(title)}</h1>${rendered.svg}`;
+  } catch (err) {
+    contentEl.innerHTML = `<h1>${escapeHtml(title)}</h1><p class="diagram-error">Unable to render diagram: ${escapeHtml(err.message)}</p>`;
+  }
+}
+
+function showEntity(entity) {
+  state.activeTable = null;
+  renderTableNav(getCurrentVisibleTableIds());
+
+  const domain = entity.domain ? `<p><strong>Domain:</strong> ${escapeHtml(entity.domain)}</p>` : '';
+  contentEl.innerHTML = `
+    <h1>${escapeHtml(entity.name)}</h1>
+    <p><strong>Type:</strong> <span class="badge">${escapeHtml(entity.type)}</span></p>
+    <p><strong>ID:</strong> <code>${escapeHtml(entity.id)}</code></p>
+    ${domain}
+  `;
 }
 
 function getCurrentVisibleTableIds() {
@@ -391,7 +533,7 @@ async function loadText(path) {
 }
 
 function escapeHtml(input) {
-  return input
+  return String(input)
     .replaceAll('&', '&amp;')
     .replaceAll('<', '&lt;')
     .replaceAll('>', '&gt;')
@@ -401,4 +543,15 @@ function escapeHtml(input) {
 """;
 }
 
-public sealed record SiteManifest(string GeneratedRoot, string ErPath, IReadOnlyList<string> Tables);
+public sealed record SiteManifest(
+    string GeneratedRoot,
+    string ErPath,
+    IReadOnlyList<string> Tables,
+    IReadOnlyList<string> ViewpointIds,
+    string DomainDepsPath,
+    string C4ContextPath,
+    string C4ContainerPath,
+    string C4ComponentPath,
+    IReadOnlyList<SiteEntitySummary> Entities);
+
+public sealed record SiteEntitySummary(string Id, string Name, string Type, string? Domain);
