@@ -1,0 +1,20 @@
+
+id: sales.order
+database: sales
+schema: dbo
+description: Customer order table
+
+owner:
+  team: Commercial Systems
+
+columns:
+
+  - name: OrderId
+    type: bigint
+    pk: true
+    description: Primary key
+
+  - name: CustomerId
+    type: bigint
+    fk: sales.customer.CustomerId
+    description: Customer reference

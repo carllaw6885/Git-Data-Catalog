@@ -1,0 +1,15 @@
+
+project:
+  name: GitCatalog
+  language: C#
+  framework: .NET 10
+  type: CLI
+
+architecture:
+  layers:
+    - CLI
+    - Core
+    - Serialization
+    - Validation
+    - Governance
+    - Generation
