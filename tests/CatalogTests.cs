@@ -341,6 +341,29 @@ public class CatalogTests
     }
 
     [Fact]
+    public void DomainDependencyGenerator_Emits_Domain_Dependencies_From_Graph()
+    {
+        var graph = new CatalogGraph(
+            [
+                new CatalogEntity { Id = "sales", Type = CatalogEntityType.Domain, Name = "Sales" },
+                new CatalogEntity { Id = "finance", Type = CatalogEntityType.Domain, Name = "Finance" },
+                new CatalogEntity { Id = "crm", Type = CatalogEntityType.System, Name = "CRM", Domain = "sales" },
+                new CatalogEntity { Id = "billing", Type = CatalogEntityType.System, Name = "Billing", Domain = "finance" }
+            ],
+            [
+                new CatalogRelationship { Id = "rel1", Type = CatalogRelationshipType.DependsOn, From = "crm", To = "billing" }
+            ],
+            [],
+            []);
+
+        var diagram = DomainDependencyGenerator.Generate(graph);
+
+        Assert.Equal("domain/domain-dependencies.mmd", diagram.RelativePath);
+        Assert.Contains("flowchart LR", diagram.Content);
+        Assert.Contains("depends_on (1)", diagram.Content);
+    }
+
+    [Fact]
     public void GenerateCatalogDocs_Emits_Index_And_Table_Page()
     {
         var docs = MarkdownGenerator.GenerateCatalogDocs(

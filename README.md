@@ -79,6 +79,10 @@ Graph-based lineage generation (slice 18):
 
 `generate-all` renders lineage diagrams from lineage viewpoints to `docs/generated/lineage/*.mmd`.
 
+Domain dependency generation (slice 19):
+
+`generate-all` renders cross-domain dependency maps to `docs/generated/domain/domain-dependencies.mmd`.
+
 ## Planning and Status
 
 - Vertical slice plan and checklist: docs/AI_IMPLEMENTATION_PLAYBOOK.md

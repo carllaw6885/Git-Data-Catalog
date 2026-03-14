@@ -199,6 +199,17 @@ public static class Program
 
 		Console.WriteLine($"Generated lineage diagrams: {lineageAssets.Count}");
 
+		var domainAsset = DomainDependencyGenerator.Generate(graph);
+		var domainPath = Path.Combine(outputPath, domainAsset.RelativePath);
+		var domainDirectory = Path.GetDirectoryName(domainPath);
+		if (!string.IsNullOrWhiteSpace(domainDirectory))
+		{
+			Directory.CreateDirectory(domainDirectory);
+		}
+
+		WriteIfChanged(domainPath, domainAsset.Content);
+		Console.WriteLine("Generated domain dependency diagrams: 1");
+
 		var siteOutputPath = Path.Combine(repoRoot, "docs", "site");
 		Directory.CreateDirectory(siteOutputPath);
 		var siteAssets = StaticSiteGenerator.GenerateSiteAssets(loadResult.Tables);
