@@ -76,6 +76,7 @@ public sealed class SqlServerImporter
                     {
                         driftDetails.AddRange(DetectTableDrift(existing, imported));
                         merged = MergeWithExisting(imported, existing);
+                        driftDetails.AddRange(DetectMergeDecisions(existing, imported, merged));
 
                         changeKind = AreEquivalent(existing, merged)
                             ? ImportChangeKind.Unchanged
@@ -434,6 +435,77 @@ public sealed class SqlServerImporter
         IReadOnlyCollection<SqlTableRow> Tables,
         IReadOnlyCollection<SqlColumnRow> Columns,
         IReadOnlyCollection<SqlForeignKeyRow> ForeignKeys);
+
+    private static IReadOnlyList<string> DetectMergeDecisions(TableDefinition existing, TableDefinition imported, TableDefinition merged)
+    {
+        var decisions = new List<string>();
+
+        if (string.Equals(merged.Description, existing.Description, StringComparison.Ordinal)
+            && !string.IsNullOrWhiteSpace(existing.Description))
+        {
+            decisions.Add("Merge strategy: kept curated table description from existing metadata.");
+        }
+        else if (string.Equals(merged.Description, imported.Description, StringComparison.Ordinal))
+        {
+            decisions.Add("Merge strategy: used imported table description due to empty curated value.");
+        }
+
+        var existingOwner = existing.Owner?.Team ?? string.Empty;
+        var importedOwner = imported.Owner?.Team ?? string.Empty;
+        var mergedOwner = merged.Owner?.Team ?? string.Empty;
+
+        if (!string.IsNullOrWhiteSpace(existingOwner)
+            && string.Equals(mergedOwner, existingOwner, StringComparison.Ordinal))
+        {
+            decisions.Add("Merge strategy: kept curated owner team from existing metadata.");
+        }
+        else if (string.Equals(mergedOwner, importedOwner, StringComparison.Ordinal))
+        {
+            decisions.Add("Merge strategy: used imported owner team due to empty curated value.");
+        }
+
+        var existingColumns = existing.Columns.ToDictionary(c => c.Name, StringComparer.OrdinalIgnoreCase);
+        var importedColumns = imported.Columns.ToDictionary(c => c.Name, StringComparer.OrdinalIgnoreCase);
+
+        foreach (var column in merged.Columns.OrderBy(c => c.Name, StringComparer.OrdinalIgnoreCase))
+        {
+            if (!existingColumns.TryGetValue(column.Name, out var existingColumn)
+                || !importedColumns.TryGetValue(column.Name, out var importedColumn))
+            {
+                continue;
+            }
+
+            if (!string.IsNullOrWhiteSpace(existingColumn.Description)
+                && string.Equals(column.Description, existingColumn.Description, StringComparison.Ordinal))
+            {
+                decisions.Add($"Merge strategy: kept curated description for column '{column.Name}'.");
+            }
+            else if (string.Equals(column.Description, importedColumn.Description, StringComparison.Ordinal)
+                     && string.IsNullOrWhiteSpace(existingColumn.Description))
+            {
+                decisions.Add($"Merge strategy: used imported description for column '{column.Name}' (curated value empty).");
+            }
+
+            var existingFk = existingColumn.Fk ?? string.Empty;
+            var importedFk = importedColumn.Fk ?? string.Empty;
+            var mergedFk = column.Fk ?? string.Empty;
+
+            if (!string.IsNullOrWhiteSpace(existingFk)
+                && string.Equals(mergedFk, existingFk, StringComparison.OrdinalIgnoreCase)
+                && string.IsNullOrWhiteSpace(importedFk))
+            {
+                decisions.Add($"Merge strategy: retained curated FK mapping for column '{column.Name}'.");
+            }
+            else if (string.Equals(mergedFk, importedFk, StringComparison.OrdinalIgnoreCase)
+                     && !string.IsNullOrWhiteSpace(importedFk))
+            {
+                decisions.Add($"Merge strategy: applied imported FK mapping for column '{column.Name}'.");
+            }
+        }
+
+        return decisions;
+    }
+
 }
 
 public sealed record ImportOptions(bool DryRun = false);

@@ -730,6 +730,60 @@ public class CatalogTests
         Assert.False(Directory.Exists(tablesPath));
     }
 
+        [Fact]
+        public void SqlImporter_BuildImportPlan_Emits_Merge_Strategy_Drift_Details()
+        {
+                var root = Path.Combine(Path.GetTempPath(), "gitcatalog-tests", Guid.NewGuid().ToString("N"));
+                var tablesPath = Path.Combine(root, "catalog", "tables");
+                Directory.CreateDirectory(tablesPath);
+
+                File.WriteAllText(Path.Combine(tablesPath, "sales.orders.yaml"), """
+        id: sales.orders
+        database: sales
+        schema: dbo
+        description: Curated Orders Description
+        owner:
+          team: Data Platform
+        columns:
+          - name: OrderId
+            type: bigint
+            pk: true
+            description: Curated order id
+          - name: CustomerId
+            type: bigint
+            pk: false
+            fk: sales.customer.CustomerId
+            description: Curated customer id
+        """);
+
+                var imported = new List<TableDefinition>
+                {
+                    new()
+                    {
+                        Id = "sales.orders",
+                        Database = "sales",
+                        Schema = "dbo",
+                        Description = "Imported from SQL Server table dbo.orders",
+                        Owner = new OwnerDefinition { Team = "" },
+                        Columns =
+                        [
+                            new ColumnDefinition { Name = "OrderId", Type = "bigint", Pk = true, Description = "" },
+                            new ColumnDefinition { Name = "CustomerId", Type = "bigint", Pk = false, Description = "", Fk = "" }
+                        ]
+                    }
+                };
+
+                var importer = new SqlServerImporter();
+                var plan = importer.BuildImportPlan(imported, root);
+
+                var change = Assert.Single(plan.Changes, c => c.TableId == "sales.orders");
+                Assert.Contains(change.Kind, new[] { ImportChangeKind.Unchanged, ImportChangeKind.Update });
+                Assert.Contains(change.DriftDetails, d => d.Contains("kept curated table description", StringComparison.OrdinalIgnoreCase));
+                Assert.Contains(change.DriftDetails, d => d.Contains("kept curated owner team", StringComparison.OrdinalIgnoreCase));
+                Assert.Contains(change.DriftDetails, d => d.Contains("kept curated description for column 'OrderId'", StringComparison.OrdinalIgnoreCase));
+                Assert.Contains(change.DriftDetails, d => d.Contains("retained curated FK mapping for column 'CustomerId'", StringComparison.OrdinalIgnoreCase));
+            }
+
     [Fact]
     public void ImportOptionsParser_Supports_ConnectionEnv_And_RepoRoot()
     {
