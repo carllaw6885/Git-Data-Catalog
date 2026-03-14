@@ -90,6 +90,20 @@ public static class StaticSiteGenerator
       <label class="label" for="table-search">Search</label>
       <input id="table-search" type="search" placeholder="tables, systems, pipelines…" />
 
+      <label class="label" for="type-filter" style="margin-top:8px">Filter by type</label>
+      <select id="type-filter">
+        <option value="">All types</option>
+        <option value="table">Table</option>
+        <option value="system">System</option>
+        <option value="pipeline">Pipeline</option>
+        <option value="dataset">Dataset</option>
+        <option value="domain">Domain</option>
+        <option value="consumer">Consumer</option>
+        <option value="actor">Actor</option>
+        <option value="component">Component</option>
+        <option value="container">Container</option>
+      </select>
+
       <button id="show-overview" class="nav-btn nav-btn-primary" type="button">Overview</button>
       <button id="show-er" class="nav-btn" type="button">ER Diagram</button>
 
@@ -226,6 +240,18 @@ body {
   border-radius: 10px;
   border: 1px solid rgba(148, 163, 184, 0.34);
   background: rgba(15, 23, 42, 0.75);
+
+  #type-filter {
+    width: 100%;
+    margin: 4px 0 10px;
+    padding: 8px;
+    border-radius: 10px;
+    border: 1px solid rgba(148, 163, 184, 0.34);
+    background: rgba(15, 23, 42, 0.75);
+    color: var(--text);
+    font-family: inherit;
+    font-size: 0.9rem;
+  }
   color: var(--text);
 }
 
@@ -376,6 +402,7 @@ const entitiesSectionEl = document.getElementById('entities-section');
 const viewpointsNavEl = document.getElementById('viewpoints-nav');
 const viewpointsSectionEl = document.getElementById('viewpoints-section');
 const searchEl = document.getElementById('table-search');
+const typeFilterEl = document.getElementById('type-filter');
 const overviewBtn = document.getElementById('show-overview');
 const erBtn = document.getElementById('show-er');
 const lineageBtn = document.getElementById('show-lineage');
@@ -422,15 +449,8 @@ function wireEvents() {
   c4ContextBtn.addEventListener('click', () => showMermaidDiagram(state.manifest.c4ContextPath, 'C4 Context'));
   c4ContainerBtn.addEventListener('click', () => showMermaidDiagram(state.manifest.c4ContainerPath, 'C4 Container'));
   c4ComponentBtn.addEventListener('click', () => showMermaidDiagram(state.manifest.c4ComponentPath, 'C4 Component'));
-  searchEl.addEventListener('input', () => {
-    const term = searchEl.value.trim().toLowerCase();
-    const filteredTables = state.allTables.filter(t => t.toLowerCase().includes(term));
-    const filteredEntities = state.allEntities.filter(e =>
-      e.name.toLowerCase().includes(term) || e.id.toLowerCase().includes(term) || e.type.toLowerCase().includes(term)
-    );
-    renderTableNav(filteredTables);
-    renderEntitiesNav(filteredEntities);
-  });
+  typeFilterEl?.addEventListener('change', () => applyFilters());
+  searchEl.addEventListener('input', () => applyFilters());
 }
 
 function renderTableNav(tableIds) {
@@ -576,6 +596,28 @@ function getCurrentVisibleTableIds() {
   }
 
   return state.allTables.filter(t => t.toLowerCase().includes(term));
+
+function applyFilters() {
+  const term = searchEl.value.trim().toLowerCase();
+  const typeFilter = typeFilterEl?.value.toLowerCase() ?? '';
+
+  const showTables = !typeFilter || typeFilter === 'table';
+  const filteredTables = showTables
+    ? state.allTables.filter(t => !term || t.toLowerCase().includes(term))
+    : [];
+
+  const filteredEntities = state.allEntities.filter(e => {
+    const matchesTerm = !term || e.name.toLowerCase().includes(term)
+      || e.id.toLowerCase().includes(term) || e.type.toLowerCase().includes(term);
+    const matchesType = !typeFilter || typeFilter === 'table'
+      ? false
+      : e.type.toLowerCase() === typeFilter;
+    return matchesTerm && (typeFilter ? matchesType : true);
+  });
+
+  renderTableNav(filteredTables);
+  renderEntitiesNav(filteredEntities);
+}
 }
 
 async function loadText(path) {

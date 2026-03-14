@@ -1159,4 +1159,20 @@ public class CatalogTests
         File.WriteAllText(Path.Combine(tablesPath, fileName), yaml);
         return root;
     }
+    [Fact]
+    public void GenerateSiteAssets_Has_Type_Filter_And_Search_Logic()
+    {
+        var graph = new CatalogGraph([], [], [], []);
+        var assets = StaticSiteGenerator.GenerateSiteAssets([], graph);
+
+        var html = assets.Single(a => a.RelativePath == "index.html").Content;
+        var js = assets.Single(a => a.RelativePath == "app.js").Content;
+        var css = assets.Single(a => a.RelativePath == "app.css").Content;
+
+        Assert.Contains("type-filter", html);
+        Assert.Contains("applyFilters", js);
+        Assert.Contains("typeFilter", js);
+        Assert.Contains("#type-filter", css);
+    }
 }
+
