@@ -32,3 +32,8 @@ dotnet run --project src/GitCatalog.Cli -- import-sqlserver "Server=localhost;Da
 ```
 
 The import command introspects SQL Server metadata and writes YAML table files to `catalog/tables`.
+
+## Planning and Status
+
+- Vertical slice plan and checklist: docs/AI_IMPLEMENTATION_PLAYBOOK.md
+- Current implementation status: docs/IMPLEMENTATION_STATUS.md
