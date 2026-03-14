@@ -823,6 +823,55 @@ public class CatalogTests
     }
 
     [Fact]
+    public void GraphLoader_Maps_C4_Metadata_Fields()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "gitcatalog-tests", Guid.NewGuid().ToString("N"));
+        var systemsPath = Path.Combine(root, "catalog", "entities", "systems");
+        Directory.CreateDirectory(systemsPath);
+        File.WriteAllText(
+            Path.Combine(systemsPath, "crm.yaml"),
+            """
+            id: crm
+            type: system
+            name: CRM
+            description: Source system
+            boundary: external
+            kind: saas
+            technology:
+              vendor: Salesforce
+            """);
+
+        var componentsPath = Path.Combine(root, "catalog", "entities", "components");
+        Directory.CreateDirectory(componentsPath);
+        File.WriteAllText(
+            Path.Combine(componentsPath, "engine.yaml"),
+            """
+            id: gc.engine
+            type: component
+            name: Engine
+            description: Internal engine
+            container: gitcatalog.cli
+            technology:
+              type: dotnet
+            """);
+
+        Directory.CreateDirectory(Path.Combine(root, "catalog", "relationships", "integrations"));
+        Directory.CreateDirectory(Path.Combine(root, "catalog", "viewpoints", "architecture"));
+
+        var graph = CatalogGraphLoader.Load(root);
+
+        Assert.Empty(graph.Diagnostics);
+        var crm = Assert.Single(graph.Entities, e => e.Id == "crm");
+        Assert.Equal("external", crm.Boundary);
+        Assert.Equal("saas", crm.Kind);
+        Assert.NotNull(crm.Technology);
+
+        var engine = Assert.Single(graph.Entities, e => e.Id == "gc.engine");
+        Assert.Equal("gitcatalog.cli", engine.Container);
+        Assert.Equal("dotnet", engine.Technology);
+    }
+
+    [Fact]
     public void GraphValidator_Flags_Unknown_Relationship_Endpoints()
     {
         var graph = new CatalogGraph(
@@ -867,6 +916,59 @@ public class CatalogTests
         Assert.Contains(filtered.Entities, e => e.Id == "sales");
         var rel = Assert.Single(filtered.Relationships);
         Assert.Equal("rel1", rel.Id);
+    }
+
+    [Fact]
+    public void C4ModelBuilder_Builds_Context_Level_From_Graph()
+    {
+        var graph = new CatalogGraph(
+            [
+                new CatalogEntity { Id = "actor.sales", Type = CatalogEntityType.Actor, Name = "Sales Analyst" },
+                new CatalogEntity { Id = "crm", Type = CatalogEntityType.System, Name = "CRM" },
+                new CatalogEntity { Id = "vendor.sf", Type = CatalogEntityType.ExternalVendor, Name = "Salesforce" },
+                new CatalogEntity { Id = "container.api", Type = CatalogEntityType.Container, Name = "API" }
+            ],
+            [
+                new CatalogRelationship { Id = "rel1", Type = CatalogRelationshipType.Uses, From = "actor.sales", To = "crm" },
+                new CatalogRelationship { Id = "rel2", Type = CatalogRelationshipType.DependsOn, From = "crm", To = "vendor.sf" },
+                new CatalogRelationship { Id = "rel3", Type = CatalogRelationshipType.Contains, From = "crm", To = "container.api" }
+            ],
+            [],
+            []);
+
+        var model = C4ModelBuilder.Build(graph, C4Level.Context);
+
+        Assert.Equal(C4Level.Context, model.Level);
+        Assert.Equal(3, model.Nodes.Count);
+        Assert.Equal(2, model.Edges.Count);
+        Assert.DoesNotContain(model.Nodes, n => n.Type == CatalogEntityType.Container);
+        Assert.DoesNotContain(model.Edges, e => e.Type == CatalogRelationshipType.Contains);
+    }
+
+    [Fact]
+    public void C4ModelBuilder_Builds_Component_Level_From_Graph()
+    {
+        var graph = new CatalogGraph(
+            [
+                new CatalogEntity { Id = "container.cli", Type = CatalogEntityType.Container, Name = "CLI" },
+                new CatalogEntity { Id = "component.loader", Type = CatalogEntityType.Component, Name = "Loader", Container = "container.cli" },
+                new CatalogEntity { Id = "component.generator", Type = CatalogEntityType.Component, Name = "Generator", Container = "container.cli" },
+                new CatalogEntity { Id = "dataset.orders", Type = CatalogEntityType.Dataset, Name = "Orders" }
+            ],
+            [
+                new CatalogRelationship { Id = "rel1", Type = CatalogRelationshipType.Contains, From = "container.cli", To = "component.loader" },
+                new CatalogRelationship { Id = "rel2", Type = CatalogRelationshipType.Uses, From = "component.loader", To = "component.generator" },
+                new CatalogRelationship { Id = "rel3", Type = CatalogRelationshipType.PublishesTo, From = "component.generator", To = "dataset.orders" }
+            ],
+            [],
+            []);
+
+        var model = C4ModelBuilder.Build(graph, C4Level.Component);
+
+        Assert.Equal(3, model.Nodes.Count);
+        Assert.Equal(2, model.Edges.Count);
+        Assert.DoesNotContain(model.Nodes, n => n.Type == CatalogEntityType.Dataset);
+        Assert.DoesNotContain(model.Edges, e => e.Type == CatalogRelationshipType.PublishesTo);
     }
 
     [Fact]

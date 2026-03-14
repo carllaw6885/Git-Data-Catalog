@@ -1,0 +1,16 @@
+id: c4-container
+name: C4 Container
+description: Container view for runtime and data containers
+includeEntityTypes:
+  - system
+  - interface
+  - container
+  - database
+  - pipeline
+  - dataset
+includeRelationshipTypes:
+  - depends_on
+  - reads_from
+  - writes_to
+  - publishes_to
+layout: LR

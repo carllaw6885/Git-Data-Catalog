@@ -14,11 +14,12 @@ Slice 16 – Architecture schema pack and validator
 Slice 17 – System architecture diagram generator
 Slice 18 – Data lineage generator
 Slice 19 – Domain dependency diagrams
-
-## In Progress
 Slice 20 – C4 metadata model
 
+## In Progress
+Slice 21 – Context diagram generator
+
 ## Planned
-Slices 21–31
+Slices 22–31
 
 Refer to AI_IMPLEMENTATION_PLAYBOOK.md for detailed sequence.

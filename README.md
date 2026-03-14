@@ -83,6 +83,10 @@ Domain dependency generation (slice 19):
 
 `generate-all` renders cross-domain dependency maps to `docs/generated/domain/domain-dependencies.mmd`.
 
+C4 metadata model (slice 20):
+
+The canonical graph now maps C4 context/container/component models through level-aware filtering, providing a shared in-memory model for upcoming C4 diagram generators.
+
 ## Planning and Status
 
 - Vertical slice plan and checklist: docs/AI_IMPLEMENTATION_PLAYBOOK.md

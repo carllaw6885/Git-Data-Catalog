@@ -21,6 +21,9 @@ public sealed class CatalogEntity
     public string? Domain { get; set; }
     public string? Boundary { get; set; }
     public string? SourceOfTruth { get; set; }
+    public string? Container { get; set; }
+    public string? Technology { get; set; }
+    public string? Kind { get; set; }
 }
 
 public sealed class CatalogRelationship

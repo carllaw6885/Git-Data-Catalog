@@ -64,7 +64,10 @@ public static class CatalogGraphLoader
                     Classification = raw.Classification,
                     Domain = raw.Domain,
                     Boundary = raw.Boundary,
-                    SourceOfTruth = raw.SourceOfTruth
+                    SourceOfTruth = raw.SourceOfTruth,
+                    Container = raw.Container,
+                    Technology = ParseTechnology(raw.Technology),
+                    Kind = raw.Kind
                 });
             }
             catch (Exception ex)
@@ -311,6 +314,9 @@ public static class CatalogGraphLoader
         public string? Domain { get; set; }
         public string? Boundary { get; set; }
         public string? SourceOfTruth { get; set; }
+        public string? Container { get; set; }
+        public object? Technology { get; set; }
+        public string? Kind { get; set; }
     }
 
     private sealed class RelationshipYaml

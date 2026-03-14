@@ -1,0 +1,12 @@
+id: c4-component
+name: C4 Component
+description: Component view for internals of key containers
+includeEntityTypes:
+  - container
+  - component
+includeRelationshipTypes:
+  - contains
+  - implements
+  - uses
+  - depends_on
+layout: TB
