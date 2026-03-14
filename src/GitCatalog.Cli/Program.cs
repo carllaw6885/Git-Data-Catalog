@@ -42,8 +42,10 @@ public static class Program
 		{
 			var importer = new SqlServerImporter();
 			var result = importer.ImportAsync(args[1], repoRoot).GetAwaiter().GetResult();
+			PrintLines(result.Warnings);
 			Console.WriteLine($"Imported tables: {result.Tables.Count}");
 			Console.WriteLine($"Wrote YAML files: {result.FilesWritten.Count}");
+			Console.WriteLine($"Import warnings: {result.Warnings.Count}");
 			return 0;
 		}
 		catch (Exception ex)

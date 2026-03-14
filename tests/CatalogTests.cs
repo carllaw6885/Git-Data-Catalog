@@ -193,7 +193,28 @@ public class CatalogTests
         Assert.Equal("sales", order.Database);
         Assert.Equal("dbo", order.Schema);
         Assert.Contains(order.Columns, c => c.Name == "OrderId" && c.Pk);
-        Assert.Contains(order.Columns, c => c.Name == "CustomerId" && c.Fk == "sales.dbo.customer.CustomerId");
+        Assert.Contains(order.Columns, c => c.Name == "CustomerId" && c.Fk == "sales.customer.CustomerId");
+    }
+
+    [Fact]
+    public void SqlImporter_BuildTables_Uses_Schema_In_Id_For_NonDbo_Tables()
+    {
+        var importer = new SqlServerImporter();
+
+        var tables = new[]
+        {
+            new SqlTableRow("sales", "stg", "order")
+        };
+
+        var columns = new[]
+        {
+            new SqlColumnRow("stg", "order", "OrderId", "bigint", 1, true)
+        };
+
+        var mapped = importer.BuildTables(tables, columns, []);
+
+        var table = Assert.Single(mapped);
+        Assert.Equal("sales.stg.order", table.Id);
     }
 
     [Fact]

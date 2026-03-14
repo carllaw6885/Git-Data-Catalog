@@ -26,6 +26,7 @@ public sealed class SqlServerImporter
 
         var mergedTables = new List<TableDefinition>();
         var files = new List<string>();
+        var warnings = new List<string>();
         foreach (var imported in importedTables)
         {
             var path = Path.Combine(outputPath, $"{imported.Id}.yaml");
@@ -33,11 +34,18 @@ public sealed class SqlServerImporter
 
             if (File.Exists(path))
             {
-                var existingText = File.ReadAllText(path);
-                var existing = deserializer.Deserialize<TableDefinition>(existingText);
-                if (existing is not null)
+                try
                 {
-                    merged = MergeWithExisting(imported, existing);
+                    var existingText = File.ReadAllText(path);
+                    var existing = deserializer.Deserialize<TableDefinition>(existingText);
+                    if (existing is not null)
+                    {
+                        merged = MergeWithExisting(imported, existing);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    warnings.Add($"Unable to merge existing metadata for '{imported.Id}' from {path}: {ex.Message}");
                 }
             }
 
@@ -47,7 +55,7 @@ public sealed class SqlServerImporter
             mergedTables.Add(merged);
         }
 
-        return new ImportResult(mergedTables, files);
+        return new ImportResult(mergedTables, files, warnings);
     }
 
     public TableDefinition MergeWithExisting(TableDefinition imported, TableDefinition existing)
@@ -112,7 +120,7 @@ public sealed class SqlServerImporter
                     Type = c.DataType,
                     Pk = c.IsPrimaryKey,
                     Fk = fkLookup.TryGetValue((c.SchemaName, c.TableName, c.ColumnName), out var fk)
-                        ? $"{table.DatabaseName}.{fk.ReferencedSchema}.{fk.ReferencedTable}.{fk.ReferencedColumn}"
+                        ? $"{BuildTableId(table.DatabaseName, fk.ReferencedSchema, fk.ReferencedTable)}.{fk.ReferencedColumn}"
                         : null,
                     Description = ""
                 })
@@ -120,7 +128,7 @@ public sealed class SqlServerImporter
 
             result.Add(new TableDefinition
             {
-                Id = $"{table.DatabaseName}.{table.TableName}",
+                Id = BuildTableId(table.DatabaseName, table.SchemaName, table.TableName),
                 Database = table.DatabaseName,
                 Schema = table.SchemaName,
                 Description = $"Imported from SQL Server table {table.SchemaName}.{table.TableName}",
@@ -131,6 +139,11 @@ public sealed class SqlServerImporter
 
         return result;
     }
+
+    private static string BuildTableId(string databaseName, string schemaName, string tableName)
+        => schemaName.Equals("dbo", StringComparison.OrdinalIgnoreCase)
+            ? $"{databaseName}.{tableName}"
+            : $"{databaseName}.{schemaName}.{tableName}";
 
     private static async Task<SchemaRows> ReadSchemaAsync(string connectionString, CancellationToken cancellationToken)
     {
@@ -258,7 +271,7 @@ public sealed class SqlServerImporter
         IReadOnlyCollection<SqlForeignKeyRow> ForeignKeys);
 }
 
-public sealed record ImportResult(IReadOnlyList<TableDefinition> Tables, IReadOnlyList<string> FilesWritten);
+public sealed record ImportResult(IReadOnlyList<TableDefinition> Tables, IReadOnlyList<string> FilesWritten, IReadOnlyList<string> Warnings);
 
 public sealed record SqlTableRow(string DatabaseName, string SchemaName, string TableName);
 public sealed record SqlColumnRow(string SchemaName, string TableName, string ColumnName, string DataType, int OrdinalPosition, bool IsPrimaryKey);
