@@ -1259,6 +1259,60 @@ public class CatalogTests
         Assert.Contains(warnings, w => w.Contains("missing a description", StringComparison.OrdinalIgnoreCase));
     }
 
+    [Fact]
+    public void ImportOptionsParser_Rejects_Connection_File_Exceeding_Size_Limit()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "gitcatalog-tests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        var connFile = Path.Combine(root, "large-conn.txt");
+
+        // Write a file that is clearly larger than any real connection string (5 KB)
+        File.WriteAllText(connFile, new string('x', 5 * 1024 + 1));
+
+        var args = new[] { "import-sqlserver", "--connection-file", connFile };
+        var parsed = ImportCommandOptionsParser.Parse(args, root);
+
+        Assert.False(parsed.IsValid);
+        Assert.Contains("maximum allowed size", parsed.Error ?? string.Empty, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void ReleaseCheck_Uses_Supplied_RepoRoot_Argument()
+    {
+        // Arrange: create a minimal valid catalog in a temp directory
+        var root = Path.Combine(Path.GetTempPath(), "gitcatalog-tests", Guid.NewGuid().ToString("N"));
+        var tablesPath = Path.Combine(root, "catalog", "tables");
+        Directory.CreateDirectory(tablesPath);
+        File.WriteAllText(
+            Path.Combine(tablesPath, "sales.order.yaml"),
+            """
+            id: sales.order
+            database: sales
+            schema: dbo
+            description: Customer order table
+            owner:
+              team: Commercial Systems
+            columns:
+              - name: OrderId
+                type: bigint
+                pk: true
+                description: Primary key
+            """);
+
+        Directory.CreateDirectory(Path.Combine(root, "catalog", "entities", "systems"));
+        Directory.CreateDirectory(Path.Combine(root, "catalog", "relationships", "integrations"));
+        Directory.CreateDirectory(Path.Combine(root, "catalog", "viewpoints", "architecture"));
+
+        // Act: pass the temp directory explicitly as repoRoot
+        // If the bug (duplicate `if`) were still present, release-check would use the
+        // current working directory instead, potentially missing the catalog and returning
+        // errors that differ from what we expect here.
+        var exitCode = Program.Main(["release-check", root, "--fail-on-error"]);
+
+        // Assert: exit 0 means the catalog was found and governance passed with --fail-on-error
+        Assert.Equal(0, exitCode);
+    }
+
     private static string CreateTempRepoWithCatalog(string fileName, string yaml)
     {
         var root = Path.Combine(Path.GetTempPath(), "gitcatalog-tests", Guid.NewGuid().ToString("N"));

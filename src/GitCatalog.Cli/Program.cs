@@ -20,7 +20,6 @@ public static class Program
 		var command = args[0].Trim().ToLowerInvariant();
 		var repoRoot = Directory.GetCurrentDirectory();
 
-		if (command is "validate" or "lint" or "generate-all")
 		if (command is "validate" or "lint" or "generate-all" or "release-check")
 		{
 			if (command == "release-check")

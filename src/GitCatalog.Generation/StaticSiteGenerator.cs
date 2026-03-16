@@ -26,25 +26,25 @@ public static class StaticSiteGenerator
             .Select(e => new SiteEntitySummary(e.Id, e.Name, e.Type.ToString(), e.Domain, e.Description, e.Owner.Team))
             .ToArray();
 
-    var lineagePaths = graph.Viewpoints
-      .Where(v => v.Id.Contains("lineage", StringComparison.OrdinalIgnoreCase)
-           || v.Name.Contains("lineage", StringComparison.OrdinalIgnoreCase))
-      .OrderBy(v => v.Id, StringComparer.OrdinalIgnoreCase)
-      .Select(v => $"../generated/lineage/{v.Id}.mmd")
-      .ToArray();
+        var lineagePaths = graph.Viewpoints
+            .Where(v => v.Id.Contains("lineage", StringComparison.OrdinalIgnoreCase)
+                || v.Name.Contains("lineage", StringComparison.OrdinalIgnoreCase))
+            .OrderBy(v => v.Id, StringComparer.OrdinalIgnoreCase)
+            .Select(v => $"../generated/lineage/{v.Id}.mmd")
+            .ToArray();
 
-    var manifest = JsonSerializer.Serialize(
-      new SiteManifest(
-        GeneratedRoot: "../generated",
-        ErPath: "../generated/er.mmd",
-        Tables: tableIds,
-        ViewpointIds: viewpointIds,
-        LineagePaths: lineagePaths,
-        DomainDepsPath: "../generated/domain/domain-dependencies.mmd",
-        C4ContextPath: "../generated/c4/context.mmd",
-        C4ContainerPath: "../generated/c4/container.mmd",
-        C4ComponentPath: "../generated/c4/component.mmd",
-        Entities: entities),
+        var manifest = JsonSerializer.Serialize(
+            new SiteManifest(
+                GeneratedRoot: "../generated",
+                ErPath: "../generated/er.mmd",
+                Tables: tableIds,
+                ViewpointIds: viewpointIds,
+                LineagePaths: lineagePaths,
+                DomainDepsPath: "../generated/domain/domain-dependencies.mmd",
+                C4ContextPath: "../generated/c4/context.mmd",
+                C4ContainerPath: "../generated/c4/container.mmd",
+                C4ComponentPath: "../generated/c4/component.mmd",
+                Entities: entities),
             new JsonSerializerOptions
             {
                 WriteIndented = true,

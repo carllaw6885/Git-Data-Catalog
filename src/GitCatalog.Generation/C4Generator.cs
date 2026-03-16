@@ -37,7 +37,7 @@ public static class C4Generator
             nodeIds[node.Id] = nodeId;
 
             var label = string.IsNullOrWhiteSpace(node.Label) ? node.Id : node.Label;
-            sb.AppendLine($"  {nodeId}[\"{Escape(label)}\"]");
+            sb.AppendLine($"  {nodeId}[\"{DiagramHelpers.EscapeLabel(label)}\"]");
         }
 
         foreach (var edge in model.Edges.OrderBy(e => e.Id, StringComparer.OrdinalIgnoreCase))
@@ -47,7 +47,7 @@ public static class C4Generator
                 continue;
             }
 
-            var label = ToRelationshipLabel(edge.Type);
+            var label = DiagramHelpers.ToRelationshipLabel(edge.Type);
             sb.AppendLine($"  {from} -->|{label}| {to}");
         }
 
@@ -64,24 +64,4 @@ public static class C4Generator
 
         return viewpoint.Layout;
     }
-
-    private static string ToRelationshipLabel(CatalogRelationshipType type)
-    {
-        var raw = type.ToString();
-        var chars = new List<char>(raw.Length + 8);
-        foreach (var c in raw)
-        {
-            if (char.IsUpper(c) && chars.Count > 0)
-            {
-                chars.Add('_');
-            }
-
-            chars.Add(char.ToLowerInvariant(c));
-        }
-
-        return new string(chars.ToArray());
-    }
-
-    private static string Escape(string value)
-        => value.Replace("\"", "\\\"", StringComparison.Ordinal);
 }

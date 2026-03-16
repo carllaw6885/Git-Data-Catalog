@@ -77,7 +77,7 @@ public static class DomainDependencyGenerator
                 label = domain.Id;
             }
 
-            sb.AppendLine($"  {nodeId}[\"{label.Replace("\"", "\\\"", StringComparison.Ordinal)}\"]");
+            sb.AppendLine($"  {nodeId}[\"{DiagramHelpers.EscapeLabel(label)}\"]");
         }
 
         foreach (var edge in edges.OrderBy(e => e.Key.From, StringComparer.OrdinalIgnoreCase).ThenBy(e => e.Key.To, StringComparer.OrdinalIgnoreCase))
