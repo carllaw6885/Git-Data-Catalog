@@ -1,7 +1,7 @@
 
 namespace GitCatalog.Core;
 
-public class TableDefinition
+public sealed class TableDefinition
 {
     public string Id { get; set; } = "";
     public string Database { get; set; } = "";
@@ -11,12 +11,12 @@ public class TableDefinition
     public List<ColumnDefinition> Columns { get; set; } = [];
 }
 
-public class OwnerDefinition
+public sealed class OwnerDefinition
 {
     public string Team { get; set; } = "";
 }
 
-public class ColumnDefinition
+public sealed class ColumnDefinition
 {
     public string Name { get; set; } = "";
     public string Type { get; set; } = "";

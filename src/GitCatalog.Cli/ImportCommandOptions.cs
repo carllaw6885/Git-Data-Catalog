@@ -136,6 +136,12 @@ public static class ImportCommandOptionsParser
                     return Error($"Connection file not found: {path}");
                 }
 
+                const long MaxConnectionFileSizeBytes = 4 * 1024; // 4 KB is more than enough for any connection string
+                if (new FileInfo(path).Length > MaxConnectionFileSizeBytes)
+                {
+                    return Error($"Connection file exceeds the maximum allowed size of {MaxConnectionFileSizeBytes} bytes: {path}");
+                }
+
                 connectionString = File.ReadAllText(path).Trim();
                 if (string.IsNullOrWhiteSpace(connectionString))
                 {

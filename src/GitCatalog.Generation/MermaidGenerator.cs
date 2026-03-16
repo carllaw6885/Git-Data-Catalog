@@ -62,7 +62,7 @@ public static class MermaidGenerator
                 ? (string.IsNullOrWhiteSpace(entity.Name) ? entity.Id : entity.Name)
                 : entity.Title;
 
-            sb.AppendLine($"  {nodeId}[\"{Escape(label)}\"]");
+            sb.AppendLine($"  {nodeId}[\"{DiagramHelpers.EscapeLabel(label)}\"]");
         }
 
         foreach (var rel in filtered.Relationships)
@@ -72,7 +72,7 @@ public static class MermaidGenerator
                 continue;
             }
 
-            var label = ToRelationshipLabel(rel.Type);
+            var label = DiagramHelpers.ToRelationshipLabel(rel.Type);
             sb.AppendLine($"  {fromId} -->|{label}| {toId}");
         }
 
@@ -80,26 +80,6 @@ public static class MermaidGenerator
     }
 
     private static string ToEntityName(string id) => id.Replace('.', '_');
-
-    private static string ToRelationshipLabel(CatalogRelationshipType type)
-    {
-        var raw = type.ToString();
-        var chars = new List<char>(raw.Length + 8);
-        foreach (var c in raw)
-        {
-            if (char.IsUpper(c) && chars.Count > 0)
-            {
-                chars.Add('_');
-            }
-
-            chars.Add(char.ToLowerInvariant(c));
-        }
-
-        return new string(chars.ToArray());
-    }
-
-    private static string Escape(string value)
-        => value.Replace("\"", "\\\"", StringComparison.Ordinal);
 
     private static string? ParseForeignKeyTargetTable(string fk)
     {
